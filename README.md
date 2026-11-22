@@ -1,6 +1,6 @@
 # Rechnung zu GiroCode
 
-Lokales Desktop-Programm für SEPA-Überweisungen in Euro. Öffne eine PDF-Rechnung, ein JPG oder ein PNG. Vergleiche die Vorschläge mit dem Beleg links im Fenster. Ergänze fehlende Felder und klicke auf **GiroCode erstellen**. Der Code erscheint in einem eigenen Fenster und lässt sich mit einer kompatiblen Banking-App scannen.
+Lokales Desktop-Programm für SEPA-Überweisungen in Euro. Öffne eine PDF-Rechnung, ein JPG oder ein PNG. Vergleiche die Vorschläge mit dem Beleg links im Fenster. Ergänze fehlende Felder und klicke auf **GiroCode erstellen**. Der Code erscheint unter den Eingabefeldern und lässt sich mit einer kompatiblen Banking-App scannen.
 
 ## Auf Linux, Windows oder macOS starten
 
