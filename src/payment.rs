@@ -100,8 +100,9 @@ fn labeled<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str) -> Vec<&'a str> {
             let rest = captures.get(1).unwrap().as_str().trim();
             if !rest.is_empty() {
                 values.push(rest);
-            } else if let Some(next) = rows.get(index + 1).and_then(|r|
-                r.iter().find(|next| next.column.abs_diff(cell.column) <= 3)) {
+            } else if let Some(next) = rows.iter().skip(index + 1).take(2)
+                .find_map(|row| row.iter().find(|next| next.column.abs_diff(cell.column) <= 3)) {
+                // An intervening row can belong entirely to the other column.
                 values.push(next.text);
             }
         }
