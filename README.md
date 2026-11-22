@@ -1,36 +1,20 @@
-# SEPA-GiroCode-Generator
+# SEPA-GiroCode-Generator · Linux (Rust)
 
-Lokales Desktop-Programm für SEPA-Überweisungen in Euro. Öffne eine PDF-Rechnung, ein JPG oder ein PNG. Vergleiche die Vorschläge mit dem Beleg links im Fenster. Ergänze fehlende Felder und klicke auf **GiroCode erstellen**. Der Code erscheint unter den Eingabefeldern und lässt sich mit einer kompatiblen Banking-App scannen.
+Lokale Linux-Desktopanwendung für SEPA-Überweisungen in Euro. Eine PDF-, JPG- oder PNG-Rechnung öffnen, die erkannten Felder mit dem Original vergleichen und den GiroCode unter den Eingabefeldern anzeigen. Änderungen an Zahlungsdaten entfernen die alte Vorschau.
 
-## Auf Linux, Windows oder macOS starten
+Die Anwendung ist in Rust geschrieben. eframe/egui zeichnet die Oberfläche, Poppler liest PDFs, Tesseract übernimmt die Texterkennung, und die Rust-Bibliothek qrcode erzeugt den GiroCode. Die Verarbeitung läuft lokal. Temporäre Seiten für die Texterkennung liegen für die Dauer des Einlesens in einem temporären Verzeichnis.
 
-1. Installiere [Miniforge](https://github.com/conda-forge/miniforge#install) für dein Betriebssystem.
-2. Lade den Projektordner herunter und entpacke ihn.
-3. Öffne im Projektordner ein Terminal. Unter Windows nutze den **Miniforge Prompt** und wechsle mit `cd` in den entpackten Ordner.
-4. Führe die folgenden Befehle nacheinander aus.
+Markiere Wörter oder mehrere Zeilen direkt auf der Rechnung mit gedrückter linker Maustaste. Mit **Strg+C** oder **Auswahl kopieren** gelangt der markierte Text in die Zwischenablage. Bei Fotos und Scans wird der erkannte OCR-Text kopiert.
 
-```sh
-conda env create -f environment.yml
-conda activate girocode
-python girocode.py
-```
+## Bauen und starten
 
-Die Einrichtung benötigt Internetzugang. Für spätere Starts genügen die letzten beiden Befehle im Projektordner. Die Anwendung verarbeitet Rechnungen offline und speichert weder erkannte Zahlungsdaten noch QR-Bilder.
-
-## Erkennung und Grenzen des Prototyps
-
-Poppler liest den PDF-Text und rendert die Seiten für die Vorschau. Tesseract übernimmt Fotos und PDF-Seiten mit weniger als 24 sichtbaren Textzeichen. Deutsch und Englisch werden je nach installierten Sprachdaten verwendet. Mit `tesseract --list-langs` lässt sich die Installation prüfen. Gemischte Seiten mit Text und eingebettetem Foto können manuelle Ergänzungen erfordern.
-
-Die Vorschläge verwenden deutschsprachige Feldbezeichnungen. Fehlt die Empfängerbeschriftung, prüft das Programm den Briefkopf auf einen Firmennamen in der Spalte der Umsatzsteuer-ID. Bleibt die Zuordnung unklar, trägst du den Empfänger selbst ein. Bei mehreren erkannten IBANs ist das Auswahlfeld zunächst leer. Prüfe bei Gutschriften, Lastschriftankündigungen und bereits bezahlten Rechnungen, ob überhaupt eine Überweisung ansteht. Die Anwendung prüft die IBAN-Prüfsumme und den Euro-Betrag. Einen Abgleich mit Bankkonten oder dem Zahlungsstatus führt sie nicht durch.
-
-Das QR-Fenster zeigt die bestätigten Angaben als EPC-QR für eine SEPA-Überweisung. Als Verwendungszweck unterstützt der Prototyp freien Text. Strukturierte Gläubigerreferenzen (RF) und Schweizer QR-Rechnungen gehören nicht zum Funktionsumfang.
-
-## Tests
+Benötigt werden eine aktuelle stabile Rust-Toolchain mit Cargo, ein C-Linker sowie die Linux-Entwicklungspakete für den Grafikstack (Wayland/X11 und EGL). Zur Laufzeit müssen pdftotext, pdftoppm und tesseract im PATH liegen. Für OCR wird mindestens eines der Tesseract-Sprachpakete Deutsch oder Englisch benötigt. Der Dateidialog nutzt das Desktop-Portal.
 
 ```sh
-python -m unittest -v
+cargo test
+cargo run --release
 ```
 
-Die Tests erzeugen ausschließlich synthetische Beispieldokumente. Für die unabhängige QR-Rücklesung wird zusätzlich `zbarimg` verwendet, sofern installiert.
+Die Anwendung liest beschriftete Zahlungsfelder und einfache zweispaltige Briefköpfe. Soweit Angaben fehlen, können sie manuell ergänzt werden. Die IBAN-Prüfsumme bestätigt ausschließlich die formale Gültigkeit. Empfänger, Betrag und Verwendungszweck vor dem Scannen prüfen.
 
-Lizenz des Projektcodes: MIT. Abhängigkeiten behalten ihre jeweiligen Lizenzen.
+Desktop-Praxistests unter Plasma und GNOME sowie ein Test mit einer Banking-App sind offen. Lizenz: MIT.
