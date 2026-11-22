@@ -152,3 +152,47 @@ fn recognize(engine: &mut Option<crate::ocr::Engine>, image: &DynamicImage) -> R
     let tsv = engine.as_mut().unwrap().recognize(image)?;
     Ok((layout_text(&tsv)?, selection::words(&tsv)))
 }
+
+#[cfg(test)]
+mod library_tests {
+    use super::*;
+
+    #[test]
+    fn poppler_reads_pdf_text_and_positions() {
+        let surface = cairo::PdfSurface::for_stream(600., 400., Vec::new()).unwrap();
+        let cr = cairo::Context::new(&surface).unwrap();
+        cr.set_font_size(16.);
+        cr.move_to(36., 48.);
+        cr.show_text("Kunde").unwrap();
+        cr.move_to(300., 48.);
+        cr.show_text("Beispiel GmbH").unwrap();
+        cr.show_page().unwrap();
+        let pdf = *surface.finish_output_stream().unwrap().downcast::<Vec<u8>>().unwrap();
+        let doc = poppler::Document::from_bytes(&glib::Bytes::from_owned(pdf), None).unwrap();
+        let page = doc.page(0).unwrap();
+        let (width, height) = page.size();
+        let (text, words) = pdf_text(&page, width, height).unwrap();
+        assert!(text.lines().any(|line| line.contains("Kunde") && line.contains("Beispiel GmbH")));
+        let word = words.iter().find(|word| word.text == "Beispiel").unwrap();
+        assert!((word.bounds.min.x - 0.5).abs() < 0.02);
+        assert_eq!(render(&page, width, height).unwrap().width(), 2100);
+    }
+
+    #[test]
+    fn tesseract_reads_image_text_and_positions() {
+        let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 530, 120).unwrap();
+        let cr = cairo::Context::new(&surface).unwrap();
+        cr.set_source_rgb(1., 1., 1.);
+        cr.paint().unwrap();
+        cr.set_source_rgb(0., 0., 0.);
+        cr.set_font_size(46.);
+        cr.move_to(20., 80.);
+        cr.show_text("Rechnung 123").unwrap();
+        let mut bytes = Vec::new();
+        surface.write_to_png(&mut bytes).unwrap();
+        let image = image::load_from_memory(&bytes).unwrap();
+        let (text, words) = recognize(&mut None, &image).unwrap();
+        assert!(text.contains("Rechnung 123"), "{text:?}");
+        assert!(words.iter().any(|word| word.text == "123" && word.bounds.is_positive()));
+    }
+}

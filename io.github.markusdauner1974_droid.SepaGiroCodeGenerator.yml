@@ -23,10 +23,12 @@ modules:
     buildsystem: simple
     build-commands:
       - make install prefix=/app
+      - install -Dm644 COPYING /app/share/licenses/poppler-data/COPYING
+      - install -Dm644 COPYING.adobe /app/share/licenses/poppler-data/COPYING.adobe
     sources:
-      - type: git
-        url: https://gitlab.freedesktop.org/poppler/poppler-data.git
-        tag: poppler-data-0.4.12
+      - type: archive
+        url: https://poppler.freedesktop.org/poppler-data-0.4.12.tar.gz
+        sha256: c835b640a40ce357e1b83666aabd95edffa24ddddd49b8daff63adb851cdab74
   - name: poppler
     buildsystem: cmake-ninja
     config-opts:
@@ -43,15 +45,20 @@ modules:
       - -DBUILD_CPP_TESTS=OFF
       - -DBUILD_QT5_TESTS=OFF
       - -DBUILD_QT6_TESTS=OFF
+    post-install:
+      - install -Dm644 COPYING /app/share/licenses/poppler/COPYING
+      - install -Dm644 COPYING3 /app/share/licenses/poppler/COPYING3
     sources:
-      - type: git
-        url: https://gitlab.freedesktop.org/poppler/poppler.git
-        tag: poppler-26.11.0
+      - type: archive
+        url: https://poppler.freedesktop.org/poppler-26.11.0.tar.xz
+        sha256: 41c32680160addf5a8dd7a830e4869c01e9f6bee1abb91e44fabd1ba9d7828fb
   - name: leptonica
     buildsystem: cmake-ninja
     config-opts:
       - -DBUILD_SHARED_LIBS=ON
       - -DBUILD_PROG=OFF
+    post-install:
+      - install -Dm644 leptonica-license.txt /app/share/licenses/leptonica/LICENSE
     sources:
       - type: git
         url: https://github.com/DanBloomberg/leptonica.git
