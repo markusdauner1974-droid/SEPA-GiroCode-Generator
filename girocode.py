@@ -2,7 +2,7 @@ import queue
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font, messagebox, ttk
 
 from PIL import Image, ImageTk
 
@@ -14,8 +14,19 @@ class Application:
     def __init__(self, root):
         self.root = root
         root.title('Rechnung zu GiroCode')
-        root.geometry('1080x740')
-        root.minsize(750, 510)
+        width, height = root.winfo_screenwidth(), root.winfo_screenheight()
+        root.geometry(f'{int(width * 0.9)}x{int(height * 0.85)}')
+        root.minsize(min(750, width), min(510, height))
+        try:
+            if root.tk.call('tk', 'windowingsystem') == 'x11':
+                root.attributes('-zoomed', True)
+            else:
+                root.state('zoomed')
+        except tk.TclError:
+            pass  # The screen-relative geometry also works without WM maximization.
+        self.ui_fonts = [font.nametofont(name) for name in ('TkDefaultFont', 'TkTextFont')]
+        self.set_font_size(14)
+        ttk.Style(root).configure('.', font='TkDefaultFont')
         self.pages = []
         self.index = 0
         self.zoom = 1
@@ -25,6 +36,9 @@ class Application:
         self.opener = ttk.Button(toolbar, text='Rechnung öffnen …', command=self.open)
         self.opener.pack(side='left')
         self.status = tk.StringVar(value='PDF, JPG oder PNG auswählen.')
+        for label, step in [('Schrift +', 2), ('Schrift −', -2)]:
+            ttk.Button(toolbar, text=label, command=lambda delta=step: self.set_font_size(
+                self.ui_fonts[0].cget('size') + delta)).pack(side='right', padx=2)
         ttk.Label(toolbar, textvariable=self.status).pack(side='left', padx=12)
         pane = ttk.Panedwindow(root, orient='horizontal')
         pane.pack(fill='both', expand=True)
@@ -41,7 +55,7 @@ class Application:
         self.counter.pack(side='left', padx=8)
         frame = ttk.Frame(left)
         frame.pack(fill='both', expand=True)
-        self.canvas = tk.Canvas(frame, background='#ddd', highlightthickness=0)
+        self.canvas = tk.Canvas(frame, width=640, background='#ddd', highlightthickness=0)
         self.canvas.grid(row=0, column=0, sticky='nsew')
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
@@ -57,14 +71,18 @@ class Application:
             value = tk.StringVar()
             self.fields.append(value)
             if label == 'IBAN':
-                entry = self.accounts = ttk.Combobox(right, textvariable=value)
+                entry = self.accounts = ttk.Combobox(right, textvariable=value, font='TkTextFont')
             else:
-                entry = ttk.Entry(right, textvariable=value)
+                entry = ttk.Entry(right, textvariable=value, font='TkTextFont')
             entry.pack(fill='x', pady=(2, 10))
         self.notice = ttk.Label(right, wraplength=320, text='Zahlungsdaten mit der Rechnung abgleichen.')
         self.notice.pack(anchor='w', pady=6)
         self.generate = ttk.Button(right, text='GiroCode erstellen', command=self.show_code, state='disabled')
         self.generate.pack(anchor='w', pady=8)
+
+    def set_font_size(self, size):
+        for ui_font in self.ui_fonts:
+            ui_font.configure(size=min(24, max(10, size)))
 
     def move(self, step):
         self.index = min(max(0, self.index + step), max(0, len(self.pages) - 1))
@@ -91,7 +109,7 @@ class Application:
         if not path:
             return
         self.pages = []
-        self.index, self.zoom = 0, 1
+        self.index, self.zoom = 0, 1.25
         self.draw()
         self.canvas.yview_moveto(0)
         self.canvas.xview_moveto(0)
