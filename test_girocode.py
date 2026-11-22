@@ -45,6 +45,29 @@ class PaymentTests(unittest.TestCase):
         self.assertEqual(suggestions(text + "\nKontoinhaber: Zahlstelle AG")[0][0], "Zahlstelle AG")
         self.assertEqual(suggestions(text.replace("USt-ID: TEST", "Telefon: 123"))[0][0], "")
 
+    def test_recipient_from_two_column_image(self):
+        with tempfile.TemporaryDirectory() as folder:
+            pdf = Path(folder, 'briefkopf.pdf')
+            doc = Canvas(str(pdf))
+            doc.setFont('Helvetica', 14)
+            for i, (left, right) in enumerate([
+                ('Kundenfirma GmbH', 'Nordlicht Beratung'),
+                ('Einkauf', 'GmbH & Co. KG'),
+                ('Am Platz 12', 'Marktweg 18'),
+                ('Kundennummer: 44', 'USt-ID: DE123456789'),
+            ]):
+                doc.drawString(35, 740 - i * 24, left)
+                doc.drawString(315, 740 - i * 24, right)
+            doc.drawString(35, 560, 'Rechnung')
+            doc.save()
+            pages, _ = read_document(pdf)
+            for extension in ('jpg', 'png'):
+                with self.subTest(extension=extension):
+                    path = pdf.with_suffix('.' + extension)
+                    pages[0].save(path)
+                    _, text = read_document(path)
+                    self.assertEqual(suggestions(text)[0][0], 'Nordlicht Beratung GmbH & Co. KG', text)
+
     def test_multiple_accounts(self):
         second = test_account('000000000000000002')
         fields, accounts = suggestions(ACCOUNT + '\nIBAN: ' + second)
