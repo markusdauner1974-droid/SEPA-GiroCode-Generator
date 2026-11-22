@@ -21,7 +21,7 @@ Die Einrichtung benötigt Internetzugang. Für spätere Starts genügen die letz
 
 Poppler liest den PDF-Text und rendert die Seiten für die Vorschau. Tesseract übernimmt Fotos und PDF-Seiten mit weniger als 24 sichtbaren Textzeichen. Deutsch und Englisch werden je nach installierten Sprachdaten verwendet. Mit `tesseract --list-langs` lässt sich die Installation prüfen. Gemischte Seiten mit Text und eingebettetem Foto können manuelle Ergänzungen erfordern.
 
-Die Vorschläge verwenden deutschsprachige Feldbezeichnungen. Einen Empfänger ohne eindeutige Beschriftung trägst du selbst ein. Bei mehreren erkannten IBANs ist das Auswahlfeld zunächst leer. Prüfe bei Gutschriften, Lastschriftankündigungen und bereits bezahlten Rechnungen, ob überhaupt eine Überweisung ansteht. Die Anwendung prüft die IBAN-Prüfsumme und den Euro-Betrag. Einen Abgleich mit Bankkonten oder dem Zahlungsstatus führt sie nicht durch.
+Die Vorschläge verwenden deutschsprachige Feldbezeichnungen. Fehlt die Empfängerbeschriftung, prüft das Programm den Briefkopf auf einen Firmennamen in der Spalte der Umsatzsteuer-ID. Bleibt die Zuordnung unklar, trägst du den Empfänger selbst ein. Bei mehreren erkannten IBANs ist das Auswahlfeld zunächst leer. Prüfe bei Gutschriften, Lastschriftankündigungen und bereits bezahlten Rechnungen, ob überhaupt eine Überweisung ansteht. Die Anwendung prüft die IBAN-Prüfsumme und den Euro-Betrag. Einen Abgleich mit Bankkonten oder dem Zahlungsstatus führt sie nicht durch.
 
 Das QR-Fenster zeigt die bestätigten Angaben als EPC-QR für eine SEPA-Überweisung. Als Verwendungszweck unterstützt der Prototyp freien Text. Strukturierte Gläubigerreferenzen (RF) und Schweizer QR-Rechnungen gehören nicht zum Funktionsumfang.
 
