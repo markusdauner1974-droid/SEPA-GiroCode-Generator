@@ -220,9 +220,9 @@ pub fn extract(text: &str) -> (Payment, Vec<String>) {
         .into_iter().filter(|value| !value.is_empty() && value.chars().count() <= 140)
         .map(str::to_owned).collect();
     let invoice_number = invoice_identifier(&rows,
-        r"(?i)^(?:Rechnungsnummer|Rechnungs[- ]?Nr\.?)(?:[ \t:#]+|$)(.*)$");
+        r"(?i)^(?:Rechnungsnummer|(?:Rechnungs|Rechnung|Rechn|Rech|Rg|Inv)\.?[ \t-]*Nr\.?)(?:[ \t:#]+|$)(.*)$");
     let customer_number = invoice_identifier(&rows,
-        r"(?i)^(?:Kundennummer|Kunden[- ]?Nr\.?)(?:[ \t:#]+|$)(.*)$");
+        r"(?i)^(?:Kundennummer|(?:Kunden|Kunde|Kund|Knd|Kd)\.?[ \t-]*Nr\.?)(?:[ \t:#]+|$)(.*)$");
     let purpose = if purposes.is_empty() && !invoice_number.is_empty() {
         format!("Rechnung {invoice_number}")
     } else { unique(purposes) };
@@ -315,6 +315,25 @@ mod tests {
         let (explicit, _) = extract(&format!("{scan}\nKontoinhaber: Anderer Kontoinhaber"));
         assert_eq!(explicit.name, "Anderer Kontoinhaber");
         assert!(!explicit.name_from_return_address);
+    }
+
+    #[test]
+    fn recognizes_number_abbreviations_without_matching_other_fields() {
+        for (invoice, customer) in [
+            ("Rech.-Nr.", "Kd.-Nr."),
+            ("RG-Nr.", "KdNr"),
+            ("Rechn. Nr.", "Kund.-Nr."),
+            ("Rechnungsnummer", "Knd-Nr."),
+        ] {
+            let document = format!("{invoice}:                 RG2026/082\n{customer}:                 13757\nKundenauftrag: 4081");
+            let (payment, _) = extract(&document);
+            assert_eq!(payment.invoice_number, "RG2026/082", "{invoice}");
+            assert_eq!(payment.customer_number, "13757", "{customer}");
+            assert_eq!(payment.purpose, "Rechnung RG2026/082");
+        }
+        let (unrelated, _) = extract("Kundenauftrag: 4081\nRechnungsdatum: 04.07.2026");
+        assert!(unrelated.invoice_number.is_empty());
+        assert!(unrelated.customer_number.is_empty());
     }
 
     #[test]
