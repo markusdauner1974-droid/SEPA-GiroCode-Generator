@@ -23,6 +23,35 @@ def valid_iban(value):
     return int(digits) % 97 == 1
 
 
+def issuer_from_header(text):
+    """Identify a company in the issuer column of a layout-preserving PDF."""
+    header = re.split(r'^\s*Rechnung(?:snummer)?\s*[:\n]', text, maxsplit=1, flags=re.I | re.M)[0]
+    rows = []
+    for line in header.expandtabs().splitlines()[:35]:
+        cells = list(re.finditer(r'\S+(?: [^\s]+)*', line))
+        rows.append(cells)
+    # A supplier tax label anchors the column; a customer address alone
+    # is insufficient evidence for choosing a payment recipient.
+    anchors = {c.start() for row in rows for c in row
+               if re.match(r'USt[. -]*(?:Id|Ident)|Umsatzsteuer-ID', c[0], re.I)}
+    suffix = re.compile(r'(?:GmbH(?: & Co\. KG)?|AG|KG|OHG|GbR|e\.V\.)$', re.I)
+    names = set()
+    for col in anchors:
+        previous = ''
+        for row in rows:
+            aligned = [c[0] for c in row if abs(c.start() - col) <= 2]
+            cell = aligned[0] if len(aligned) == 1 else ''
+            if re.match(r'USt[. -]*(?:Id|Ident)|Umsatzsteuer-ID', cell, re.I):
+                break
+            if suffix.search(cell):
+                name = previous + ' ' + cell if suffix.fullmatch(cell) else cell
+                if (not suffix.fullmatch(name.strip()) and len(name) <= 70
+                        and re.fullmatch(r"[^\W\d_][\w &.,'’()/+-]*", name)):
+                    names.add(name)
+            previous = cell
+    return names.pop() if len(names) == 1 else ''
+
+
 def suggestions(text):
     accounts = []
     for m in re.finditer(r'\b([A-Z]{2})(?=[0-9]{2})', text):
@@ -40,7 +69,12 @@ def suggestions(text):
         values = {m.strip() for m in re.findall(pattern, text, re.I | re.M)}
         return values.pop() if len(values) == 1 else ''
 
-    name = single(r'^(?:Kontoinhaber(?:in)?|Zahlungsempfänger|Empfänger)\s*:\s*([^\n]+)')
+    labels = re.findall(r'(?:^|[ \t]{2,})(?:Kontoinhaber(?:in)?|Zahlungsempfänger|Empfänger)[ \t]*:[ \t]*([^\n]+)', text, re.I | re.M)
+    names = {re.split(r'\s{2,}|\s+(?:IBAN|BIC)\s*:', label.strip(), maxsplit=1, flags=re.I)[0]
+             for label in labels}
+    name = names.pop() if len(names) == 1 else ''
+    if not labels:
+        name = issuer_from_header(text)
     amount = single(r'(?:zu zahlender Betrag|Zahlbetrag|offener Betrag|Gesamtbetrag|Rechnungsbetrag)[ \t:]*(?:EUR|€)?[ \t]*(\d+(?:\.\d{3})*,\d{2}|\d+\.\d{2})(?!\d)')
     if re.search(r'\b(?:CHF|USD|GBP|SEK|NOK|DKK|PLN|CZK)\b|[$£]', text):
         amount = ''
