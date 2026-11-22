@@ -54,6 +54,7 @@ modules:
         sha256: 41c32680160addf5a8dd7a830e4869c01e9f6bee1abb91e44fabd1ba9d7828fb
   - name: leptonica
     buildsystem: cmake-ninja
+    builddir: true
     config-opts:
       - -DBUILD_SHARED_LIBS=ON
       - -DBUILD_PROG=OFF
@@ -65,6 +66,7 @@ modules:
         tag: 1.85.0
   - name: tesseract
     buildsystem: cmake-ninja
+    builddir: true
     config-opts:
       - -DBUILD_SHARED_LIBS=ON
       - -DBUILD_TRAINING_TOOLS=OFF
