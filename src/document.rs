@@ -106,11 +106,11 @@ fn pdf_text(page: &poppler::Page, width: f64, height: f64) -> Result<(String, Ve
     Ok((layout_text(&tsv)?, selection::words(&tsv)))
 }
 
-fn render(page: &poppler::Page, width: f64, height: f64) -> Result<DynamicImage, String> {
+fn render(page: &poppler::Page, width: f64, height: f64, long_edge: f64) -> Result<DynamicImage, String> {
     if !(width.is_finite() && height.is_finite() && width > 0. && height > 0.) {
         return Err("Ungültige PDF-Seitengröße.".into());
     }
-    let scale = 2100.0 / width.max(height);
+    let scale = long_edge / width.max(height);
     let surface = cairo::ImageSurface::create(cairo::Format::Rgb24,
         (width * scale).ceil() as i32, (height * scale).ceil() as i32).map_err(|e| e.to_string())?;
     let context = cairo::Context::new(&surface).map_err(|e| e.to_string())?;
@@ -134,11 +134,18 @@ pub fn load(path: &Path, force_ocr: bool) -> Result<(Vec<Page>, String), String>
         for index in 0..doc.n_pages() {
             let page = doc.page(index).ok_or_else(|| format!("PDF-Seite {} fehlt.", index + 1))?;
             let (width, height) = page.size();
-            let image = render(&page, width, height)?;
-            let (mut part, mut words) = pdf_text(&page, width, height)?;
-            if force_ocr || part.trim().chars().count() < 24 {
-                (part, words) = recognize(&mut ocr, &image)?;
-            }
+            let (embedded_text, embedded_words) = if force_ocr {
+                (String::new(), Vec::new())
+            } else {
+                pdf_text(&page, width, height)?
+            };
+            let needs_ocr = force_ocr || embedded_text.trim().chars().count() < 24;
+            let image = render(&page, width, height, if needs_ocr { 3200. } else { 2100. })?;
+            let (part, words) = if needs_ocr {
+                recognize(&mut ocr, &image)?
+            } else {
+                (embedded_text, embedded_words)
+            };
             text.push_str(&part);
             text.push('\n');
             pages.push(Page { image, words });
@@ -188,7 +195,7 @@ mod library_tests {
         assert!(text.lines().any(|line| line.contains("Kunde") && line.contains("Beispiel GmbH")));
         let word = words.iter().find(|word| word.text == "Beispiel").unwrap();
         assert!((word.bounds.min.x - 0.5).abs() < 0.02);
-        assert_eq!(render(&page, width, height).unwrap().width(), 2100);
+        assert_eq!(render(&page, width, height, 2100.).unwrap().width(), 2100);
     }
 
     #[test]
