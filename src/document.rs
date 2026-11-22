@@ -123,7 +123,7 @@ fn render(page: &poppler::Page, width: f64, height: f64) -> Result<DynamicImage,
     image::load_from_memory(&bytes).map_err(|e| e.to_string())
 }
 
-pub fn load(path: &Path) -> Result<(Vec<Page>, String), String> {
+pub fn load(path: &Path, force_ocr: bool) -> Result<(Vec<Page>, String), String> {
     let path = path.canonicalize().map_err(|e| e.to_string())?;
     let mut pages = Vec::new();
     let mut text = String::new();
@@ -136,7 +136,7 @@ pub fn load(path: &Path) -> Result<(Vec<Page>, String), String> {
             let (width, height) = page.size();
             let image = render(&page, width, height)?;
             let (mut part, mut words) = pdf_text(&page, width, height)?;
-            if part.trim().chars().count() < 24 {
+            if force_ocr || part.trim().chars().count() < 24 {
                 (part, words) = recognize(&mut ocr, &image)?;
             }
             text.push_str(&part);
@@ -223,6 +223,28 @@ mod library_tests {
         assert_eq!(payment.bic, "COBADEFFXXX", "{text}");
         assert_eq!(payment.amount, "49,98", "{text}");
         assert_eq!(payment.purpose, "Rechnung 2026/0123", "{text}");
+    }
+
+    #[test]
+    fn tesseract_reads_pale_red_and_blue_text_with_positions() {
+        let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 1050, 260).unwrap();
+        let cr = cairo::Context::new(&surface).unwrap();
+        cr.set_source_rgb(1., 1., 1.);
+        cr.paint().unwrap();
+        cr.set_font_size(53.);
+        cr.set_source_rgb(0.96, 0.83, 0.81);
+        cr.move_to(25., 95.);
+        cr.show_text("Muster Heiztechnik").unwrap();
+        cr.set_source_rgb(0.77, 0.90, 0.97);
+        cr.move_to(25., 191.);
+        cr.show_text("Muster Abrechnung").unwrap();
+        let mut bytes = Vec::new();
+        surface.write_to_png(&mut bytes).unwrap();
+        let image = image::load_from_memory(&bytes).unwrap();
+        let (text, words) = recognize(&mut None, &image).unwrap();
+        assert!(text.contains("Muster Heiztechnik"), "{text:?}");
+        assert!(text.contains("Muster Abrechnung"), "{text:?}");
+        assert!(words.iter().any(|word| word.text == "Heiztechnik" && word.bounds.is_positive()));
     }
 
     #[test]

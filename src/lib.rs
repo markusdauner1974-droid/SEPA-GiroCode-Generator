@@ -31,9 +31,9 @@ fn json_bytes(value: Value) -> Bytes {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn giro_open(path: *const u8, len: usize) -> *mut Invoice {
+pub unsafe extern "C" fn giro_open(path: *const u8, len: usize, force_ocr: bool) -> *mut Invoice {
     let path = std::ffi::OsStr::from_bytes(slice::from_raw_parts(path, len));
-    let invoice = match document::load(Path::new(path)) {
+    let invoice = match document::load(Path::new(path), force_ocr) {
         Ok((pages, text)) => {
             let (fields, accounts) = payment::extract(&text);
             Invoice {

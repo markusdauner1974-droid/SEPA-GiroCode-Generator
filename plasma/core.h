@@ -12,7 +12,7 @@ struct RustBytes {
 };
 
 extern "C" {
-Invoice *giro_open(const char *path, std::size_t len);
+Invoice *giro_open(const char *path, std::size_t len, bool forceOcr);
 void giro_close(Invoice *invoice);
 RustBytes giro_details(const Invoice *invoice);
 RustBytes giro_page(const Invoice *invoice, std::size_t index);

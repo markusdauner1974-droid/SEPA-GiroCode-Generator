@@ -67,6 +67,9 @@ public:
         openAction = file->addAction(QIcon::fromTheme("document-open"), tr("&Öffnen …"), QKeySequence::Open,
                                      this, &Window::openDialog);
         toolbar->addAction(openAction);
+        rereadAction = file->addAction(QIcon::fromTheme("view-refresh"), tr("PDF-Text per OCR neu erkennen"),
+                                       this, [this] { openFile(currentPath, true); });
+        rereadAction->setStatusTip(tr("Liest das Seitenbild und übernimmt die neu erkannten Felder."));
         file->addAction(tr("&Schließen"), QKeySequence::Close, this, &QWidget::close);
         toolbar->addSeparator();
         previous = view->addAction(QIcon::fromTheme("go-previous"), tr("Vorherige Seite"), QKeySequence(Qt::Key_PageUp),
@@ -162,13 +165,14 @@ public:
         refreshControls();
     }
 
-    void openFile(const QString &path)
+    void openFile(const QString &path, bool forceOcr = false)
     {
         if (watcher.isRunning() || path.isEmpty())
             return;
         settings.setValue("directory", QFileInfo(path).absolutePath());
+        currentPath = path;
         filename = QFileInfo(path).fileName();
-        notice->setText(tr("Rechnung wird gelesen …"));
+        notice->setText(forceOcr ? tr("PDF-Text wird per OCR neu erkannt …") : tr("Rechnung wird gelesen …"));
         references->hide();
         references->clear();
         document.reset();
@@ -181,8 +185,8 @@ public:
         }
         clearQr();
         const QByteArray encoded = QFile::encodeName(path);
-        watcher.setFuture(QtConcurrent::run([encoded] {
-            return Document(giro_open(encoded.data(), encoded.size()), giro_close);
+        watcher.setFuture(QtConcurrent::run([encoded, forceOcr] {
+            return Document(giro_open(encoded.data(), encoded.size(), forceOcr), giro_close);
         }));
         refreshControls();
     }
@@ -281,6 +285,8 @@ private:
     void refreshControls()
     {
         openAction->setEnabled(!watcher.isRunning());
+        rereadAction->setEnabled(!watcher.isRunning()
+            && QFileInfo(currentPath).suffix().compare("pdf", Qt::CaseInsensitive) == 0);
         previous->setEnabled(count > 0 && index > 0);
         next->setEnabled(index + 1 < count);
         pageLabel->setText(count > 0 ? tr("Seite %1 von %2").arg(index + 1).arg(count) : QString());
@@ -325,12 +331,12 @@ private:
     QSettings settings;
     QFutureWatcher<Document> watcher;
     Document document;
-    QString filename;
+    QString filename, currentPath;
     int index = 0;
     int count = 0;
     Preview *preview;
     QSplitter *settingsSplitter;
-    QAction *openAction, *previous, *next, *zoomIn, *zoomOut, *fit;
+    QAction *openAction, *rereadAction, *previous, *next, *zoomIn, *zoomOut, *fit;
     QLabel *pageLabel, *notice, *references, *qrLabel = nullptr;
     QComboBox *ibanChoices;
     QPushButton *generate;

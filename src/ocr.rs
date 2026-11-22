@@ -2,7 +2,7 @@
 // are always released by Tesseract, the library that allocated them.
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::ptr::NonNull;
-use image::DynamicImage;
+use image::{DynamicImage, GrayImage, Luma};
 
 #[link(name = "tesseract")]
 extern "C" {
@@ -14,6 +14,38 @@ extern "C" {
     fn TessBaseAPIRecognize(engine: *mut c_void, monitor: *mut c_void) -> c_int;
     fn TessBaseAPIGetTsvText(engine: *mut c_void, page: c_int) -> *mut c_char;
     fn TessDeleteText(text: *mut c_char);
+}
+
+// OCR thresholding on luminance alone can lose light red and blue ink.
+fn readable_scan(image: &DynamicImage) -> GrayImage {
+    let gray = image.to_luma8();
+    let rgb = image.to_rgb8();
+    let mut samples = 0;
+    let mut light_paper = 0;
+    for pixel in rgb.pixels().step_by(61) {
+        samples += 1;
+        let [r, g, b] = pixel.0;
+        let low = r.min(g).min(b);
+        let high = r.max(g).max(b);
+        if low >= 203 && high - low <= 36 {
+            light_paper += 1;
+        }
+    }
+    if light_paper * 2 < samples {
+        return gray;
+    }
+    GrayImage::from_fn(rgb.width(), rgb.height(), |x, y| {
+        let [r, g, b] = rgb.get_pixel(x, y).0;
+        let low = r.min(g).min(b);
+        let chroma = r.max(g).max(b) - low;
+        let luma = gray.get_pixel(x, y).0[0];
+        // Leave mostly neutral ink and paper alone. Ramp in the boost for
+        // colored pixels to preserve antialiasing and avoid hard edges.
+        let strength = u16::from(chroma.saturating_sub(14).min(52));
+        let ink = low.saturating_sub(chroma / 2).min(luma);
+        let output = u16::from(luma) - u16::from(luma - ink) * strength / 52;
+        Luma([output as u8])
+    })
 }
 
 pub struct Engine(NonNull<c_void>);
@@ -36,7 +68,7 @@ impl Engine {
     }
 
     pub fn recognize(&mut self, image: &DynamicImage) -> Result<String, String> {
-        let pixels = image.to_luma8();
+        let pixels = readable_scan(image);
         let (width, height) = (pixels.width() as c_int, pixels.height() as c_int);
         let engine = self.0.as_ptr();
         // Grayscale pixels use one byte each and remain valid throughout recognition.
