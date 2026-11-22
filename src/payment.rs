@@ -97,7 +97,7 @@ fn labeled<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str) -> Vec<&'a str> {
     for (index, row) in rows.iter().enumerate() {
         for cell in row {
             let Some(captures) = label.captures(cell.text) else { continue };
-            let rest = captures[1].trim();
+            let rest = captures.get(1).unwrap().as_str().trim();
             if !rest.is_empty() {
                 values.push(rest);
             } else if let Some(next) = rows.get(index + 1).and_then(|r|
