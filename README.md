@@ -4,6 +4,8 @@ Entwicklungszweig für die lokale Linux-Desktopanwendung. Eine PDF-, JPG- oder P
 
 Die Anwendung ist in Rust geschrieben. eframe/egui zeichnet die Oberfläche, Poppler liest PDFs, Tesseract übernimmt die Texterkennung, und die Rust-Bibliothek qrcode erzeugt den GiroCode. Die Verarbeitung läuft lokal. Temporäre Seiten für die Texterkennung liegen für die Dauer des Einlesens in einem temporären Verzeichnis.
 
+Markiere Wörter oder mehrere Zeilen direkt auf der Rechnung mit gedrückter linker Maustaste. Mit **Strg+C** oder **Auswahl kopieren** gelangt der markierte Text in die Zwischenablage. Bei Fotos und Scans wird der erkannte OCR-Text kopiert.
+
 ## Bauen und starten
 
 Benötigt werden eine aktuelle stabile Rust-Toolchain mit Cargo, ein C-Linker sowie die Linux-Entwicklungspakete für den Grafikstack (Wayland/X11 und EGL). Zur Laufzeit müssen pdftotext, pdftoppm und tesseract im PATH liegen. Für OCR wird mindestens eines der Tesseract-Sprachpakete Deutsch oder Englisch benötigt. Der Dateidialog nutzt das Desktop-Portal.

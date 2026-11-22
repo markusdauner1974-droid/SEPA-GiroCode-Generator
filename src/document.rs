@@ -9,7 +9,7 @@ fn output(cmd: &mut Command) -> Result<Vec<u8>,String> {
 }
 
 // Reconstruct physical rows even if OCR returns the two address columns in reading order.
-fn ocr(path: &Path) -> Result<String,String> {
+fn ocr(path: &Path) -> Result<(String, Vec<crate::selection::Word>),String> {
     let installed = output(Command::new("tesseract").arg("--list-langs"))?;
     let installed = String::from_utf8_lossy(&installed);
     let langs = ["deu","eng"].into_iter().filter(|l| installed.lines().any(|s| s.trim()==*l)).collect::<Vec<_>>().join("+");
@@ -28,7 +28,7 @@ fn ocr(path: &Path) -> Result<String,String> {
         heights.push(v[3]);
         units.push(v[2]/f[11].chars().count().max(1) as i32);
     }
-    if words.is_empty() { return Ok(String::new()); }
+    if words.is_empty() { return Ok((String::new(),Vec::new())); }
     heights.sort(); units.sort(); words.sort();
     let tolerance = (heights[heights.len()/2]*65/100).max(1);
     let unit = (units[units.len()/2]*8/10).max(1);
@@ -49,10 +49,15 @@ fn ocr(path: &Path) -> Result<String,String> {
         }
         text.push_str(&line); text.push('\n'); i=j;
     }
-    Ok(text)
+    Ok((text,crate::selection::words(&tsv)))
 }
 
-pub fn load(path: &Path) -> Result<(Vec<DynamicImage>,String),String> {
+pub struct Page {
+    pub image: DynamicImage,
+    pub words: Vec<crate::selection::Word>,
+}
+
+pub fn load(path: &Path) -> Result<(Vec<Page>,String),String> {
     let path=path.canonicalize().map_err(|e| e.to_string())?;
     let mut pages=Vec::new();
     let mut text=String::new();
@@ -64,12 +69,18 @@ pub fn load(path: &Path) -> Result<(Vec<DynamicImage>,String),String> {
         for (i,part) in raw.split_terminator('\x0c').enumerate() {
             let n=(i+1).to_string();
             let bytes=output(Command::new("pdftoppm").args(["-f",&n,"-l",&n,"-singlefile","-scale-to","2100","-png"]).arg(&path))?;
-            if part.trim().chars().count()<24 {
+            let words = if part.trim().chars().count()<24 {
                 std::fs::write(&png,&bytes).map_err(|e| e.to_string())?;
-                text.push_str(&ocr(&png)?);
-            } else { text.push_str(part); }
+                let (recognized,words) = ocr(&png)?;
+                text.push_str(&recognized);
+                words
+            } else {
+                text.push_str(part);
+                let tsv = output(Command::new("pdftotext").args(["-f",&n,"-l",&n,"-tsv","-enc","UTF-8"]).arg(&path).arg("-"))?;
+                crate::selection::words(&String::from_utf8_lossy(&tsv))
+            };
             text.push('\n');
-            pages.push(image::load_from_memory(&bytes).map_err(|e| e.to_string())?);
+            pages.push(Page {image:image::load_from_memory(&bytes).map_err(|e| e.to_string())?,words});
         }
     } else {
         use image::ImageDecoder;
@@ -80,8 +91,9 @@ pub fn load(path: &Path) -> Result<(Vec<DynamicImage>,String),String> {
         let (w,h)=picture.dimensions();
         if w.max(h)>3200 { picture=picture.thumbnail(3200,3200); }
         picture.save(&png).map_err(|e| e.to_string())?;
-        text=ocr(&png)?;
-        pages.push(picture);
+        let (recognized,words) = ocr(&png)?;
+        text = recognized;
+        pages.push(Page {image:picture,words});
     }
     if pages.is_empty() {return Err("Keine lesbare Seite gefunden.".into());}
     Ok((pages,text))

@@ -1,14 +1,16 @@
 mod document;
+mod selection;
 mod payment;
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions, Vec2};
 use payment::Payment;
 use qrcode::{QrCode, EcLevel, Color};
 use std::sync::mpsc::{self,Receiver};
 
-type Document = Result<(Vec<image::DynamicImage>,String),String>;
+type Document = Result<(Vec<document::Page>,String),String>;
 #[derive(Default)]
 struct App {
-    pages: Vec<image::DynamicImage>, index: usize, preview: Option<TextureHandle>,
+    pages: Vec<document::Page>, index: usize, preview: Option<TextureHandle>,
+    selection: selection::Selection,
     fields: Payment, accounts: Vec<String>, qr: Option<TextureHandle>, status: String,
     pending: Option<Receiver<Document>>, zoom: f32,
 }
@@ -21,7 +23,8 @@ impl App {
         std::thread::spawn(move || { let _=tx.send(document::load(&path)); ctx.request_repaint(); });
     }
     fn show_page(&mut self,ctx:&egui::Context) {
-        let img=self.pages[self.index].to_rgba8();
+        self.selection=Default::default();
+        let img=self.pages[self.index].image.to_rgba8();
         self.preview=Some(ctx.load_texture("Rechnung",ColorImage::from_rgba_unmultiplied(
             [img.width() as usize,img.height() as usize],&img),TextureOptions::LINEAR));
     }
@@ -83,16 +86,26 @@ impl eframe::App for App {
         });
         egui::CentralPanel::default().show(ctx,|ui|{
             if self.pages.is_empty(){return;}
-            ui.horizontal(|ui|{
+            ui.horizontal_wrapped(|ui|{
                 if ui.add_enabled(self.index>0,egui::Button::new("‹")).clicked(){self.index-=1;self.show_page(ctx);}
                 if ui.add_enabled(self.index+1<self.pages.len(),egui::Button::new("›")).clicked(){self.index+=1;self.show_page(ctx);}
                 ui.label(format!("Seite {} von {}",self.index+1,self.pages.len()));
                 if ui.button("−").clicked(){self.zoom=(self.zoom-0.25).max(0.5);}
                 if ui.button("+").clicked(){self.zoom=(self.zoom+0.25).min(4.0);}
+                let words=&self.pages[self.index].words;
+                let text=self.selection.text(words);
+                if ui.add_enabled(!text.is_empty(),egui::Button::new("Auswahl kopieren")).on_hover_text("Text in der Rechnung mit der Maus markieren und mit Strg+C kopieren").clicked(){
+                    ctx.copy_text(text);
+                }
             });
             if let Some(t)=&self.preview{
                 let width=ui.available_width()*self.zoom;
-                egui::ScrollArea::both().show(ui,|ui|{ui.image((t.id(),Vec2::new(width,width * t.size()[1] as f32 / t.size()[0] as f32)));});
+                egui::ScrollArea::both().show(ui,|ui|{
+                    let size=Vec2::new(width,width * t.size()[1] as f32 / t.size()[0] as f32);
+                    let response=ui.add(egui::Image::new((t.id(),size)).sense(egui::Sense::click_and_drag()))
+                        .on_hover_cursor(egui::CursorIcon::Text);
+                    self.selection.interact(ui,&response,&self.pages[self.index].words);
+                });
             }
         });
     }
