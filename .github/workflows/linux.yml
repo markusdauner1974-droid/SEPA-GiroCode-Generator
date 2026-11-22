@@ -10,3 +10,22 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-dev libegl1-mesa-dev libpoppler-glib-dev libtesseract-dev tesseract-ocr-deu tesseract-ocr-eng
       - run: rustup update stable && cargo +stable test
       - run: cargo +stable build --release
+
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup update stable
+          mkdir -p .cargo
+          cargo +stable vendor vendor > .cargo/config.toml
+      - run: sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
+      - run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08
+          flatpak-builder --user --disable-rofiles-fuse --force-clean --repo=flatpak-repo build-flatpak io.github.markusdauner1974_droid.SepaGiroCodeGenerator.yml
+          flatpak build-bundle flatpak-repo SEPA-GiroCode-Generator.flatpak io.github.markusdauner1974_droid.SepaGiroCodeGenerator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SEPA-GiroCode-Generator-flatpak
+          path: SEPA-GiroCode-Generator.flatpak

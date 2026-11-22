@@ -1,0 +1,95 @@
+app-id: io.github.markusdauner1974_droid.SepaGiroCodeGenerator
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: rechnung-zu-girocode
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  - --env=SEPA_GIROCODE_TESSDATA=/app/share/tessdata
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - '*.a'
+modules:
+  - name: poppler-data
+    buildsystem: simple
+    build-commands:
+      - make install prefix=/app
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/poppler/poppler-data.git
+        tag: poppler-data-0.4.12
+  - name: poppler
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DENABLE_GLIB=ON
+      - -DENABLE_GLIB_DOC=OFF
+      - -DENABLE_QT5=OFF
+      - -DENABLE_QT6=OFF
+      - -DENABLE_CPP=OFF
+      - -DENABLE_UTILS=OFF
+      - -DENABLE_BOOST=OFF
+      - -DENABLE_GPGME=OFF
+      - -DENABLE_LIBCURL=OFF
+      - -DBUILD_GTK_TESTS=OFF
+      - -DBUILD_CPP_TESTS=OFF
+      - -DBUILD_QT5_TESTS=OFF
+      - -DBUILD_QT6_TESTS=OFF
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/poppler/poppler.git
+        tag: poppler-26.11.0
+  - name: leptonica
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_SHARED_LIBS=ON
+      - -DBUILD_PROG=OFF
+    sources:
+      - type: git
+        url: https://github.com/DanBloomberg/leptonica.git
+        tag: 1.85.0
+  - name: tesseract
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_SHARED_LIBS=ON
+      - -DBUILD_TRAINING_TOOLS=OFF
+      - -DBUILD_TESTS=OFF
+      - -DDISABLE_ARCHIVE=ON
+      - -DDISABLE_CURL=ON
+    cleanup:
+      - /bin/tesseract
+    sources:
+      - type: git
+        url: https://github.com/tesseract-ocr/tesseract.git
+        tag: 5.5.1
+  - name: tessdata
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 deu.traineddata /app/share/tessdata/deu.traineddata
+      - install -Dm644 eng.traineddata /app/share/tessdata/eng.traineddata
+      - install -Dm644 LICENSE /app/share/licenses/tessdata_fast/LICENSE
+    sources:
+      - type: git
+        url: https://github.com/tesseract-ocr/tessdata_fast.git
+        tag: 4.1.0
+  - name: sepa-girocode-generator
+    buildsystem: simple
+    build-commands:
+      - cargo build --release --locked --offline
+      - install -Dm755 target/release/rechnung-zu-girocode /app/bin/rechnung-zu-girocode
+      - install -Dm644 packaging/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.desktop /app/share/applications/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.desktop
+      - install -Dm644 LICENSE /app/share/licenses/sepa-girocode-generator/LICENSE
+      - install -Dm644 LICENSE-MIT /app/share/licenses/sepa-girocode-generator/LICENSE-MIT
+      - install -Dm644 packaging/Apache-2.0.txt /app/share/licenses/tesseract/LICENSE
+    sources:
+      - type: dir
+        path: .
+        skip: [.git, .flatpak-builder, build-flatpak, flatpak-repo, target]

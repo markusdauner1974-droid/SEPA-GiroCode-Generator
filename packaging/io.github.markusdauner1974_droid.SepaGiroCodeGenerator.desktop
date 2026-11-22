@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=SEPA-GiroCode-Generator
+Comment=GiroCodes aus Rechnungen erstellen
+Exec=rechnung-zu-girocode
+Terminal=false
+Categories=Office;Finance;
