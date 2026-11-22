@@ -192,6 +192,40 @@ mod library_tests {
     }
 
     #[test]
+    fn reads_amount_at_right_edge_of_invoice() {
+        let surface = cairo::PdfSurface::for_stream(600., 400., Vec::new()).unwrap();
+        let cr = cairo::Context::new(&surface).unwrap();
+        cr.set_font_size(12.);
+        for (x, y, text) in [
+            (25., 32., "Musterkunde"),
+            (300., 32., "Muster Steuerberatungsgesellschaft"),
+            (300., 48., "GmbH & Co. KG"),
+            (300., 70., "USt-ID: TEST"),
+            (300., 110., "Rechnung"),
+            (300., 140., "Rechnungsnummer:"),
+            (520., 140., "2026/0123"),
+            (25., 200., "Rechnungssumme netto"),
+            (540., 200., "42,00"),
+            (25., 222., "Zu zahlender Betrag"),
+            (540., 222., "49,98"),
+            (25., 290., "Musterbank IBAN: DE89370400440532013000 BIC: COBADEFFXXX"),
+        ] {
+            cr.move_to(x, y);
+            cr.show_text(text).unwrap();
+        }
+        cr.show_page().unwrap();
+        let pdf = *surface.finish_output_stream().unwrap().downcast::<Vec<u8>>().unwrap();
+        let doc = poppler::Document::from_data(&pdf, None).unwrap();
+        let (text, _) = pdf_text(&doc.page(0).unwrap(), 600., 400.).unwrap();
+        let (payment, _) = crate::payment::extract(&text);
+        assert_eq!(payment.name, "Muster Steuerberatungsgesellschaft GmbH & Co. KG", "{text}");
+        assert_eq!(payment.iban, "DE89370400440532013000", "{text}");
+        assert_eq!(payment.bic, "COBADEFFXXX", "{text}");
+        assert_eq!(payment.amount, "49,98", "{text}");
+        assert_eq!(payment.purpose, "Rechnung 2026/0123", "{text}");
+    }
+
+    #[test]
     fn tesseract_reads_image_text_and_positions() {
         let surface = cairo::ImageSurface::create(cairo::Format::Rgb24, 530, 120).unwrap();
         let cr = cairo::Context::new(&surface).unwrap();
