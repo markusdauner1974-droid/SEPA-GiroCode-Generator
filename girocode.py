@@ -13,7 +13,7 @@ from zahlung import payload, qr_image, suggestions
 class Application:
     def __init__(self, root):
         self.root = root
-        root.title('Rechnung zu GiroCode')
+        root.title('SEPA-GiroCode-Generator')
         width, height = root.winfo_screenwidth(), root.winfo_screenheight()
         root.geometry(f'{int(width * 0.9)}x{int(height * 0.85)}')
         root.minsize(min(750, width), min(510, height))
