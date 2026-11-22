@@ -1,4 +1,4 @@
-# Rechnung zu GiroCode · Linux (Rust)
+# SEPA-GiroCode-Generator · Linux (Rust)
 
 Entwicklungszweig für die lokale Linux-Desktopanwendung. Eine PDF-, JPG- oder PNG-Rechnung öffnen, die erkannten Felder mit dem Original vergleichen und den GiroCode unter den Eingabefeldern anzeigen. Änderungen an Zahlungsdaten entfernen die alte Vorschau.
 

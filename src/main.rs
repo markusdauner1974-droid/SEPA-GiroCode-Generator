@@ -112,5 +112,5 @@ impl eframe::App for App {
 }
 fn main()->eframe::Result {
     let options=eframe::NativeOptions{viewport:egui::ViewportBuilder::default().with_maximized(true),..Default::default()};
-    eframe::run_native("Rechnung zu GiroCode",options,Box::new(|_| Ok(Box::new(App::default()))))
+    eframe::run_native("SEPA-GiroCode-Generator",options,Box::new(|_| Ok(Box::new(App::default()))))
 }
