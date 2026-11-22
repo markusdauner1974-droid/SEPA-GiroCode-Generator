@@ -58,8 +58,6 @@ modules:
     config-opts:
       - -DBUILD_SHARED_LIBS=ON
       - -DBUILD_PROG=OFF
-    post-install:
-      - install -Dm644 leptonica-license.txt /app/share/licenses/leptonica/LICENSE
     sources:
       - type: git
         url: https://github.com/DanBloomberg/leptonica.git
@@ -98,6 +96,7 @@ modules:
       - install -Dm644 LICENSE /app/share/licenses/sepa-girocode-generator/LICENSE
       - install -Dm644 LICENSE-MIT /app/share/licenses/sepa-girocode-generator/LICENSE-MIT
       - install -Dm644 packaging/Apache-2.0.txt /app/share/licenses/tesseract/LICENSE
+      - install -Dm644 packaging/Leptonica.txt /app/share/licenses/leptonica/LICENSE
     sources:
       - type: dir
         path: .
