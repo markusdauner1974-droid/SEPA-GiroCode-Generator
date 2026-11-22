@@ -23,6 +23,7 @@
 #include <QScrollArea>
 #include <QSettings>
 #include <QSplitter>
+#include <QStringList>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QtConcurrentRun>
@@ -100,6 +101,10 @@ public:
         auto *form = new QVBoxLayout(box);
         notice = plainLabel(tr("Öffne eine Rechnung oder ziehe sie aus Dolphin ins Fenster."));
         form->addWidget(notice);
+        references = plainLabel();
+        references->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        references->hide();
+        form->addWidget(references);
         ibanChoices = new QComboBox;
         ibanChoices->setAccessibleName(tr("Gefundene IBANs"));
         ibanChoices->hide();
@@ -164,6 +169,8 @@ public:
         settings.setValue("directory", QFileInfo(path).absolutePath());
         filename = QFileInfo(path).fileName();
         notice->setText(tr("Rechnung wird gelesen …"));
+        references->hide();
+        references->clear();
         document.reset();
         count = 0;
         preview->showPage({}, 0);
@@ -229,6 +236,19 @@ private:
                 hints[i]->setText(tr("Bitte aus der Rechnung übernehmen."));
                 hints[i]->show();
             }
+        }
+        QStringList numbers;
+        const QString invoiceNumber = details["invoiceNumber"].toString();
+        const QString customerNumber = details["customerNumber"].toString();
+        if (!invoiceNumber.isEmpty())
+            numbers.append(tr("Rechnungsnummer: %1").arg(invoiceNumber));
+        if (!customerNumber.isEmpty())
+            numbers.append(tr("Kundennummer: %1").arg(customerNumber));
+        references->setText(numbers.join(QLatin1Char('\n')));
+        references->setVisible(!numbers.isEmpty());
+        if (details["returnAddressName"].toBool()) {
+            hints[0]->setText(tr("Aus der Absenderzeile übernommen. Bitte mit der Rechnung abgleichen."));
+            hints[0]->show();
         }
         const auto accounts = details["accounts"].toArray();
         ibanChoices->clear();
@@ -308,7 +328,7 @@ private:
     Preview *preview;
     QSplitter *settingsSplitter;
     QAction *openAction, *previous, *next, *zoomIn, *zoomOut, *fit;
-    QLabel *pageLabel, *notice, *qrLabel = nullptr;
+    QLabel *pageLabel, *notice, *references, *qrLabel = nullptr;
     QComboBox *ibanChoices;
     QPushButton *generate;
     std::array<QLineEdit *, 5> fields;

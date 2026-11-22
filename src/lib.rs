@@ -40,6 +40,8 @@ pub unsafe extern "C" fn giro_open(path: *const u8, len: usize) -> *mut Invoice 
                 details: json!({
                     "pages": pages.len(), "fields": [fields.name, fields.iban, fields.bic, fields.amount, fields.purpose],
                     "accounts": accounts, "externalPayment": payment::external_payment_notice(&text),
+                    "invoiceNumber": fields.invoice_number, "customerNumber": fields.customer_number,
+                    "returnAddressName": fields.name_from_return_address,
                 }),
                 pages,
             }
@@ -88,7 +90,7 @@ pub unsafe extern "C" fn giro_code(input: *const u8, len: usize) -> Bytes {
     let Ok([name, iban, bic, amount, purpose]) = fields else {
         return json_bytes(json!({"error": "Zahlungsdaten konnten nicht gelesen werden."}));
     };
-    let fields = payment::Payment { name, iban, bic, amount, purpose };
+    let fields = payment::Payment { name, iban, bic, amount, purpose, ..Default::default() };
     match fields.payload().and_then(qr_png) {
         Ok(png) => png.into(),
         Err(error) => json_bytes(json!({"error": error})),
