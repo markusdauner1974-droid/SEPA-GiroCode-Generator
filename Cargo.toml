@@ -2,7 +2,7 @@
 name = "sepa-girocode-generator"
 version = "0.2.0"
 edition = "2021"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [dependencies]
 eframe = { version = "=0.31.1", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
@@ -10,7 +10,9 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png"]
 regex = "1"
 qrcode = { version = "0.14", default-features = false }
 rfd = "0.15"
-tempfile = "3"
+poppler-rs = "0.26"
+glib = "0.22"
+cairo-rs = { version = "0.22", features = ["png"] }
 
 [[bin]]
 name = "rechnung-zu-girocode"

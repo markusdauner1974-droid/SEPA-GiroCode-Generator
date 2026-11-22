@@ -1,21 +1,9 @@
-use std::{ffi::OsStr, path::Path, process::Command};
+use std::{ffi::OsStr, path::Path};
 use image::{DynamicImage, GenericImageView};
+use glib::translate::ToGlibPtr;
+use crate::selection::{self, Word};
 
-fn output(cmd: &mut Command) -> Result<Vec<u8>,String> {
-    let name = cmd.get_program().to_string_lossy().into_owned();
-    let result = cmd.output().map_err(|e| format!("{name}: {e}"))?;
-    if !result.status.success() { return Err(format!("{name}: {}",String::from_utf8_lossy(&result.stderr).trim())); }
-    Ok(result.stdout)
-}
-
-// Reconstruct physical rows even if OCR returns the two address columns in reading order.
-fn ocr(path: &Path) -> Result<(String, Vec<crate::selection::Word>),String> {
-    let installed = output(Command::new("tesseract").arg("--list-langs"))?;
-    let installed = String::from_utf8_lossy(&installed);
-    let langs = ["deu","eng"].into_iter().filter(|l| installed.lines().any(|s| s.trim()==*l)).collect::<Vec<_>>().join("+");
-    if langs.is_empty() { return Err("Tesseract benötigt deutsche oder englische Sprachdaten.".into()); }
-    let tsv = output(Command::new("tesseract").arg(path).args(["stdout","-l",&langs,"tsv"]))?;
-    let tsv = String::from_utf8_lossy(&tsv);
+fn layout_text(tsv: &str) -> Result<String, String> {
     let mut words = Vec::new();
     let mut heights = Vec::new();
     let mut units = Vec::new();
@@ -28,7 +16,7 @@ fn ocr(path: &Path) -> Result<(String, Vec<crate::selection::Word>),String> {
         heights.push(v[3]);
         units.push(v[2]/f[11].chars().count().max(1) as i32);
     }
-    if words.is_empty() { return Ok((String::new(),Vec::new())); }
+    if words.is_empty() { return Ok(String::new()); }
     heights.sort(); units.sort(); words.sort();
     let tolerance = (heights[heights.len()/2]*65/100).max(1);
     let unit = (units[units.len()/2]*8/10).max(1);
@@ -49,7 +37,7 @@ fn ocr(path: &Path) -> Result<(String, Vec<crate::selection::Word>),String> {
         }
         text.push_str(&line); text.push('\n'); i=j;
     }
-    Ok((text,crate::selection::words(&tsv)))
+    Ok(text)
 }
 
 pub struct Page {
@@ -57,44 +45,110 @@ pub struct Page {
     pub words: Vec<crate::selection::Word>,
 }
 
-pub fn load(path: &Path) -> Result<(Vec<Page>,String),String> {
-    let path=path.canonicalize().map_err(|e| e.to_string())?;
-    let mut pages=Vec::new();
-    let mut text=String::new();
-    let tmp=tempfile::tempdir().map_err(|e| e.to_string())?;
-    let png=tmp.path().join("page.png");
+fn pdf_text(page: &poppler::Page, width: f64, height: f64) -> Result<(String, Vec<Word>), String> {
+    let Some(text) = page.text() else { return Ok((String::new(), Vec::new())); };
+    let mut boxes = std::ptr::null_mut();
+    let mut count = 0;
+    // Poppler allocates one rectangle per character. Copy before freeing with GLib.
+    let boxes = unsafe {
+        poppler::ffi::poppler_page_get_text_layout(page.to_glib_none().0, &mut boxes, &mut count);
+        let values = if boxes.is_null() {
+            Vec::new()
+        } else {
+            std::slice::from_raw_parts(boxes, count as usize).to_vec()
+        };
+        glib::ffi::g_free(boxes.cast());
+        values
+    };
+    if text.chars().count() != boxes.len() {
+        return Ok((text.to_string(), Vec::new()));
+    }
+
+    let scale = 2100.0 / width.max(height);
+    let mut tsv = format!("header\n1\t1\t0\t0\t0\t0\t0\t0\t{}\t{}\t-1\tpage\n",
+        (width * scale).ceil(), (height * scale).ceil());
+    let mut line = 1;
+    let mut token = String::new();
+    let mut bounds: Option<(f64, f64, f64, f64)> = None;
+    for (ch, rect) in text.chars().zip(boxes).chain(std::iter::once(('\n', poppler::ffi::PopplerRectangle {
+        x1: 0., y1: 0., x2: 0., y2: 0.,
+    }))) {
+        if ch.is_whitespace() {
+            if let Some((x1, y1, x2, y2)) = bounds.take() {
+                use std::fmt::Write;
+                writeln!(tsv, "5\t1\t0\t0\t{line}\t0\t{}\t{}\t{}\t{}\t100\t{token}",
+                    (x1 * scale).round(), (y1 * scale).round(),
+                    ((x2 - x1) * scale).round(), ((y2 - y1) * scale).round()).unwrap();
+                token.clear();
+            }
+            if ch == '\n' { line += 1; }
+        } else {
+            token.push(ch);
+            bounds = Some(match bounds {
+                Some((x1, y1, x2, y2)) => (x1.min(rect.x1), y1.min(rect.y1), x2.max(rect.x2), y2.max(rect.y2)),
+                None => (rect.x1, rect.y1, rect.x2, rect.y2),
+            });
+        }
+    }
+    Ok((layout_text(&tsv)?, selection::words(&tsv)))
+}
+
+fn render(page: &poppler::Page, width: f64, height: f64) -> Result<DynamicImage, String> {
+    if !(width.is_finite() && height.is_finite() && width > 0. && height > 0.) {
+        return Err("Ungültige PDF-Seitengröße.".into());
+    }
+    let scale = 2100.0 / width.max(height);
+    let surface = cairo::ImageSurface::create(cairo::Format::Rgb24,
+        (width * scale).ceil() as i32, (height * scale).ceil() as i32).map_err(|e| e.to_string())?;
+    let context = cairo::Context::new(&surface).map_err(|e| e.to_string())?;
+    context.set_source_rgb(1., 1., 1.);
+    context.paint().map_err(|e| e.to_string())?;
+    context.scale(scale, scale);
+    page.render(&context);
+    let mut bytes = Vec::new();
+    surface.write_to_png(&mut bytes).map_err(|e| e.to_string())?;
+    image::load_from_memory(&bytes).map_err(|e| e.to_string())
+}
+
+pub fn load(path: &Path) -> Result<(Vec<Page>, String), String> {
+    let path = path.canonicalize().map_err(|e| e.to_string())?;
+    let mut pages = Vec::new();
+    let mut text = String::new();
+    let mut ocr = None;
     if path.extension().and_then(OsStr::to_str).is_some_and(|s| s.eq_ignore_ascii_case("pdf")) {
-        let raw=output(Command::new("pdftotext").args(["-layout","-enc","UTF-8"]).arg(&path).arg("-"))?;
-        let raw=String::from_utf8_lossy(&raw);
-        for (i,part) in raw.split_terminator('\x0c').enumerate() {
-            let n=(i+1).to_string();
-            let bytes=output(Command::new("pdftoppm").args(["-f",&n,"-l",&n,"-singlefile","-scale-to","2100","-png"]).arg(&path))?;
-            let words = if part.trim().chars().count()<24 {
-                std::fs::write(&png,&bytes).map_err(|e| e.to_string())?;
-                let (recognized,words) = ocr(&png)?;
-                text.push_str(&recognized);
-                words
-            } else {
-                text.push_str(part);
-                let tsv = output(Command::new("pdftotext").args(["-f",&n,"-l",&n,"-tsv","-enc","UTF-8"]).arg(&path).arg("-"))?;
-                crate::selection::words(&String::from_utf8_lossy(&tsv))
-            };
+        let uri = glib::filename_to_uri(&path, None).map_err(|e| e.to_string())?;
+        let doc = poppler::Document::from_file(uri.as_str(), None).map_err(|e| e.to_string())?;
+        for index in 0..doc.n_pages() {
+            let page = doc.page(index).ok_or_else(|| format!("PDF-Seite {} fehlt.", index + 1))?;
+            let (width, height) = page.size();
+            let image = render(&page, width, height)?;
+            let (mut part, mut words) = pdf_text(&page, width, height)?;
+            if part.trim().chars().count() < 24 {
+                (part, words) = recognize(&mut ocr, &image)?;
+            }
+            text.push_str(&part);
             text.push('\n');
-            pages.push(Page {image:image::load_from_memory(&bytes).map_err(|e| e.to_string())?,words});
+            pages.push(Page { image, words });
         }
     } else {
         use image::ImageDecoder;
-        let mut decoder=image::ImageReader::open(&path).map_err(|e| e.to_string())?.into_decoder().map_err(|e| e.to_string())?;
-        let orientation=decoder.orientation().map_err(|e| e.to_string())?;
-        let mut picture=DynamicImage::from_decoder(decoder).map_err(|e| e.to_string())?;
-        picture.apply_orientation(orientation);
-        let (w,h)=picture.dimensions();
-        if w.max(h)>3200 { picture=picture.thumbnail(3200,3200); }
-        picture.save(&png).map_err(|e| e.to_string())?;
-        let (recognized,words) = ocr(&png)?;
-        text = recognized;
-        pages.push(Page {image:picture,words});
+        let mut decoder = image::ImageReader::open(&path).map_err(|e| e.to_string())?
+            .into_decoder().map_err(|e| e.to_string())?;
+        let orientation = decoder.orientation().map_err(|e| e.to_string())?;
+        let mut image = DynamicImage::from_decoder(decoder).map_err(|e| e.to_string())?;
+        image.apply_orientation(orientation);
+        let (width, height) = image.dimensions();
+        if width.max(height) > 3200 { image = image.thumbnail(3200, 3200); }
+        let (part, words) = recognize(&mut ocr, &image)?;
+        text = part;
+        pages.push(Page { image, words });
     }
-    if pages.is_empty() {return Err("Keine lesbare Seite gefunden.".into());}
-    Ok((pages,text))
+    if pages.is_empty() { return Err("Keine lesbare Seite gefunden.".into()); }
+    Ok((pages, text))
+}
+
+fn recognize(engine: &mut Option<crate::ocr::Engine>, image: &DynamicImage) -> Result<(String, Vec<Word>), String> {
+    if engine.is_none() { *engine = Some(crate::ocr::Engine::new()?); }
+    let tsv = engine.as_mut().unwrap().recognize(image)?;
+    Ok((layout_text(&tsv)?, selection::words(&tsv)))
 }

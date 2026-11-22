@@ -1,4 +1,5 @@
 mod document;
+mod ocr;
 mod selection;
 mod payment;
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions, Vec2};
