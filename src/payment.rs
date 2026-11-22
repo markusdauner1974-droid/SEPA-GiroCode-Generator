@@ -52,7 +52,7 @@ fn valid_iban(s: &str) -> bool {
 
 fn header_name(text: &str) -> String {
     let tax = rx(r"(?i)^USt[. -]*(Id|Ident)|^Umsatzsteuer-ID");
-    let suffix = rx(r"(?i)\b(GmbH(?: & Co\. KG)?|AG|KG|OHG|GbR|e\.V\.)$");
+    let suffix = rx(r"(?i)\b(GmbH(?: & Co\. KG)?|AG|KG|OHG|GbR|eG|e\.V\.)$");
     let cell = rx(r"\S+(?: \S+)*");
     let rows: Vec<_> = text.lines().take(35)
         .map(|line| cell.find_iter(line).map(|m| (line[..m.start()].chars().count(),m.as_str())).collect::<Vec<_>>()).collect();
@@ -140,25 +140,27 @@ fn return_address_name(rows: &[Vec<Cell<'_>>]) -> String {
     let postal = rx(r"\b[0-9]{5} [\p{L}][\p{L} .'-]*$");
     let house_number = rx(r"\s[0-9]+[a-zA-Z]?(?:[/-][0-9]+)?$");
     let separated = rx(r"^(.+?)\s+[·•|:–-]\s+(.+)$");
+    let prefixed_street = rx(r"(?i)^(.+?)\s+((?:im|am|an der|auf dem)\s+[\p{L}][\p{L} -]*\s+\d+[a-z]?)$");
+    let po_box = rx(r"(?i)^Postfach\s+[0-9]+(?:\s+[0-9]+)*$");
     let street_shape = rx(r"(?i)(?:stra(?:ße|sse)|str\.|weg|platz|allee|gasse|ring)\s+\d|^(?:am|im|an der|auf dem)\s");
     let mut names = BTreeSet::new();
     for (index, row) in rows.iter().take(30).enumerate() {
         for sender in row {
             let Some(zip) = postal.find(sender.text) else { continue };
-            let Some(customer_row) = rows[index + 1..].iter().take(4)
-                .position(|row| row.iter().any(|cell|
-                    cell.column.abs_diff(sender.column) <= 3 && postal.is_match(cell.text)))
-                else { continue };
-            // A customer address needs separate name, street and town lines.
-            if customer_row < 2 { continue; }
+            let address: Vec<_> = rows[index + 1..].iter().take(10)
+                .filter_map(|row| row.iter().find(|cell| cell.column.abs_diff(sender.column) <= 3))
+                .take(4).collect();
+            let customer_block = address.windows(3).any(|block|
+                house_number.is_match(block[1].text) && postal.is_match(block[2].text));
+            if !customer_block { continue; }
             let before_zip = sender.text[..zip.start()]
                 .trim_end_matches([' ', ',', '·', '•', '|', '–', '-']);
-            if let Some(parts) = separated.captures(before_zip) {
+            if let Some(parts) = separated.captures(before_zip).or_else(|| prefixed_street.captures(before_zip)) {
                 let name = parts[1].trim();
                 let street = parts[2].trim();
                 if (3..=70).contains(&name.chars().count()) && name.contains(' ')
-                    && !name.contains(':') && street_shape.is_match(street)
-                    && house_number.is_match(street) {
+                    && !name.contains(':') && (po_box.is_match(street)
+                        || (street_shape.is_match(street) && house_number.is_match(street))) {
                     names.insert(name.to_owned());
                 }
             }
@@ -311,10 +313,6 @@ mod tests {
     #[test]
     fn scanned_return_address_and_number_columns() {
         let scan = concat!(
-            "  Muster Heiztechnik-\n",
-            "  Solaranlagen\n",
-            "  Im Musterfeld 15\n",
-            "  12345 Musterstadt\n",
             "  Muster Heiztechnik-Solaranlagen Im Musterfeld 15 12345 Musterstadt\n",
             "  Testkunde                   Datum:                04.07.2026\n",
             "  Kundenweg 82\n",
@@ -375,13 +373,35 @@ mod tests {
     fn separates_business_name_from_bank_account_holder() {
         for separator in [" · ", " : "] {
             let scan = format!(
-                "   KFZ-Service A. Muster{separator}Beispielstr. 11/5 · 12345 Musterstadt\n   Frau\n   Testkundin\n   Kundenweg 82\n   12345 Musterstadt\nEndbetr.*:              _782,01 €\nIBAN: DE89370400440532013000\nKontoinhaber: Alex Muster",
+                "   KFZ-Service A. Muster{separator}Beispielstr. 11/5 · 12345 Musterstadt\n                                                 Telefon\n                                                 Öffnungszeiten\n   Frau\n   Testkundin\n   Kundenweg 82\n   12345 Musterstadt\nEndbetr.*:              _782,01 €\nIBAN: DE89370400440532013000\nKontoinhaber: Alex Muster",
             );
             let (payment, _) = extract(&scan);
             assert_eq!(payment.invoice_issuer, "KFZ-Service A. Muster");
             assert_eq!(payment.name, "Alex Muster");
             assert_eq!(payment.amount, "782,01");
         }
+    }
+
+    #[test]
+    fn extracts_company_from_post_box_return_address() {
+        let scan = concat!(
+            "  Muster Abrechnung eG · Postfach 70 04 61 · 12345 Musterstadt\n",
+            "                                                        Kontakt\n",
+            "                                                        Telefon\n",
+            "                                                        Öffnungszeiten\n",
+            "                                                        Website\n",
+            "                                                        E-Mail\n",
+            "                                                        Steuer-Nr.\n",
+            "   Frau\n",
+            "   Testkundin\n",
+            "   Kundenweg 82\n",
+            "   54321 Beispielstadt\n",
+            "   IBAN: DE89370400440532013000",
+        );
+        let (payment, _) = extract(scan);
+        assert_eq!(payment.invoice_issuer, "Muster Abrechnung eG");
+        assert_eq!(payment.name, "Muster Abrechnung eG");
+        assert!(payment.name_from_return_address);
     }
 
     #[test]
