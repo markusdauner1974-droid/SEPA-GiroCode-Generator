@@ -1,7 +1,7 @@
 app-id: io.github.markusdauner1974_droid.SepaGiroCodeGenerator
-runtime: org.freedesktop.Platform
-runtime-version: '25.08'
-sdk: org.freedesktop.Sdk
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
 command: rechnung-zu-girocode
@@ -10,6 +10,8 @@ finish-args:
   - --socket=fallback-x11
   - --share=ipc
   - --device=dri
+  - --filesystem=xdg-documents:ro
+  - --filesystem=xdg-download:ro
   - --env=SEPA_GIROCODE_TESSDATA=/app/share/tessdata
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
@@ -93,8 +95,9 @@ modules:
   - name: sepa-girocode-generator
     buildsystem: simple
     build-commands:
-      - cargo build --release --locked --offline
-      - install -Dm755 target/release/rechnung-zu-girocode /app/bin/rechnung-zu-girocode
+      - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DGIRO_OFFLINE=ON -DBUILD_TESTING=OFF
+      - cmake --build build
+      - cmake --install build
       - install -Dm644 packaging/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.desktop /app/share/applications/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.desktop
       - install -Dm644 LICENSE /app/share/licenses/sepa-girocode-generator/LICENSE
       - install -Dm644 LICENSE-MIT /app/share/licenses/sepa-girocode-generator/LICENSE-MIT
@@ -103,4 +106,4 @@ modules:
     sources:
       - type: dir
         path: .
-        skip: [.git, .flatpak-builder, build-flatpak, flatpak-repo, target]
+        skip: [.git, .flatpak-builder, build-flatpak, flatpak-repo, target, build]

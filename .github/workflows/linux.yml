@@ -7,9 +7,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-dev libegl1-mesa-dev libpoppler-glib-dev libtesseract-dev tesseract-ocr-deu tesseract-ocr-eng
+      - run: sudo apt-get update && sudo apt-get install -y qt6-base-dev ninja-build libpoppler-glib-dev libtesseract-dev tesseract-ocr-deu tesseract-ocr-eng
       - run: rustup update stable && cargo +stable test
-      - run: cargo +stable build --release
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
   flatpak:
     runs-on: ubuntu-24.04
@@ -22,10 +24,10 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
       - run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08
+          flatpak install --user -y --noninteractive flathub org.kde.Platform//6.11 org.kde.Sdk//6.11 org.freedesktop.Sdk.Extension.rust-stable//25.08
           flatpak-builder --user --disable-rofiles-fuse --force-clean --repo=flatpak-repo build-flatpak io.github.markusdauner1974_droid.SepaGiroCodeGenerator.yml
-          flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo flatpak-repo SEPA-GiroCode-Generator.flatpak io.github.markusdauner1974_droid.SepaGiroCodeGenerator
+          flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo flatpak-repo SEPA-GiroCode-Generator-Plasma.flatpak io.github.markusdauner1974_droid.SepaGiroCodeGenerator
       - uses: actions/upload-artifact@v4
         with:
-          name: SEPA-GiroCode-Generator-flatpak
-          path: SEPA-GiroCode-Generator.flatpak
+          name: SEPA-GiroCode-Generator-Plasma
+          path: SEPA-GiroCode-Generator-Plasma.flatpak
