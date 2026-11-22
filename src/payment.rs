@@ -73,6 +73,10 @@ fn header_name(text: &str) -> String {
     unique(names)
 }
 
+pub fn external_payment_notice(text: &str) -> bool {
+    rx(r"(?i)keine\s+Zahlung(?:en)?\s+auf\s+unser(?:e[smn]?)?\s+Konto\b").is_match(text)
+}
+
 pub fn extract(text: &str) -> (Payment, Vec<String>) {
     let mut accounts = BTreeSet::new();
     for m in rx(r"\b[A-Z]{2}[0-9]{2}").find_iter(text) {
@@ -84,14 +88,19 @@ pub fn extract(text: &str) -> (Payment, Vec<String>) {
     }
     let name_pattern = r"(?im)(?:^|[ \t]{2,})(?:Kontoinhaberin?|Kontoinhaber|Zahlungsempfänger|Empfänger)[ \t]*:[ \t]*(\S+(?: \S+)*)";
     let labels = rx(name_pattern);
-    let name = if labels.is_match(text) { field(text,name_pattern) } else { header_name(text) };
+    let mut name = if labels.is_match(text) { field(text,name_pattern) } else { header_name(text) };
     let amount = if rx(r"\b(CHF|USD|GBP|SEK|NOK|DKK|PLN|CZK)\b|[$£]").is_match(text) { String::new() } else {
-        field(text,r"(?i)(?:zu zahlender Betrag|Zahlbetrag|offener Betrag|Gesamtbetrag|Rechnungsbetrag)[ \t:]*(?:EUR|€)?[ \t]*(\d+(?:\.\d{3})*,\d{2}|\d+\.\d{2})\b")
+        field(text,r"(?i)(?:zu zahlender Betrag|Zahlbetrag|offener Betrag|Gesamtbetrag|Rechnungsbetrag)(?:[ \t]*\([ \t]*brutto[ \t]*\))?[ \t:]*(?:EUR|€)?[ \t]*(\d+(?:\.\d{3})*,\d{2}|\d+\.\d{2})\b")
     };
     let mut purpose = field(text,r"(?im)^\s*(?:Verwendungszweck|Zahlungsgrund)[ \t]*:[ \t]*([^\n]+)");
     if purpose.is_empty() {
         let number = field(text,r"(?i)\b(?:Rechnungsnummer|Rechnungs[- ]?Nr\.?)[ \t:#]*([\w/.-]*\d[\w/.-]*)");
         if !number.is_empty() { purpose = format!("Rechnung {number}"); }
+    }
+    // A seller account must not be proposed when the invoice directs payment elsewhere.
+    if external_payment_notice(text) {
+        accounts.clear();
+        name.clear();
     }
     let iban = unique(accounts.clone());
     let bic = if iban.is_empty() { String::new() } else { field(text,r"\bBIC[ \t:]*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b") };
@@ -131,6 +140,16 @@ mod tests {
     fn girocode() {
         let (p,_) = extract("Empfänger: Beispiel GmbH\nIBAN: DE89 3704 0044 0532 0130 00\nZahlbetrag: 1.234,50\nRechnungsnummer: T-17");
         assert_eq!(p.payload().unwrap(),"BCD\n002\n1\nSCT\n\nBeispiel GmbH\nDE89370400440532013000\nEUR1234.50\n\n\nRechnung T-17");
+    }
+    #[test]
+    fn marketplace_invoice() {
+        let text = "Empfänger: Beispielshop GmbH\nIBAN: DE89370400440532013000\nRechnungs Nr. TEST-17\nWarenwert (netto) EUR 25,20\nRechnungsbetrag (brutto) EUR 29,99\nBitte veranlassen Sie keine Zahlungen auf unser Konto.";
+        let (payment, accounts) = extract(text);
+        assert_eq!(payment.amount, "29,99");
+        assert_eq!(payment.purpose, "Rechnung TEST-17");
+        assert!(external_payment_notice(text));
+        assert!(payment.name.is_empty() && payment.iban.is_empty() && accounts.is_empty());
+        assert!(payment.payload().is_err());
     }
     #[test]
     fn columns() {

@@ -43,7 +43,11 @@ impl eframe::App for App {
             self.pending=None;
             match result {
                 Ok((pages,text))=>{self.pages=pages; (self.fields,self.accounts)=payment::extract(&text);
-                    self.show_page(ctx); self.status="Zahlungsdaten mit der Rechnung abgleichen.".into();}
+                    self.show_page(ctx); self.status=if payment::external_payment_notice(&text) {
+                        "Laut Rechnung keine Zahlung an den Verkäufer. Bitte die Zahlungsanweisung des Zahlungsdienstleisters prüfen."
+                    } else {
+                        "Zahlungsdaten mit der Rechnung abgleichen."
+                    }.into();}
                 Err(e)=>self.status=e,
             }
         }
