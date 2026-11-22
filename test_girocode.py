@@ -36,6 +36,15 @@ class PaymentTests(unittest.TestCase):
             _, photo_text = read_document(jpg)
             self.assertEqual(suggestions(photo_text)[0], FIELDS)
 
+    def test_sender_column_with_wrapped_legal_form(self):
+        text = ("Kundenfirma GmbH         Nordlicht Beratung\n"
+                "Einkauf                  GmbH & Co. KG\n"
+                "Musterweg 12             USt-ID: TEST\n"
+                "RECHNUNG\nKomplementärin: Andere GmbH")
+        self.assertEqual(suggestions(text)[0][0], "Nordlicht Beratung GmbH & Co. KG")
+        self.assertEqual(suggestions(text + "\nKontoinhaber: Zahlstelle AG")[0][0], "Zahlstelle AG")
+        self.assertEqual(suggestions(text.replace("USt-ID: TEST", "Telefon: 123"))[0][0], "")
+
     def test_multiple_accounts(self):
         second = test_account('000000000000000002')
         fields, accounts = suggestions(ACCOUNT + '\nIBAN: ' + second)
