@@ -51,7 +51,6 @@ fn header_name(text: &str) -> String {
     let suffix = rx(r"(?i)\b(GmbH(?: & Co\. KG)?|AG|KG|OHG|GbR|e\.V\.)$");
     let cell = rx(r"\S+(?: \S+)*");
     let rows: Vec<_> = text.lines().take(35)
-        .take_while(|s| !s.trim().eq_ignore_ascii_case("Rechnung"))
         .map(|line| cell.find_iter(line).map(|m| (line[..m.start()].chars().count(),m.as_str())).collect::<Vec<_>>()).collect();
     let mut names = BTreeSet::new();
     for (i,row) in rows.iter().enumerate() {
@@ -77,34 +76,103 @@ pub fn external_payment_notice(text: &str) -> bool {
     rx(r"(?i)keine\s+Zahlung(?:en)?\s+auf\s+unser(?:e[smn]?)?\s+Konto\b").is_match(text)
 }
 
+// A line can contain several visual columns. Match a label and its value
+// within that column, even when a document places the value on the next line.
+struct Cell<'a> {
+    column: usize,
+    text: &'a str,
+}
+
+fn columns(text: &str) -> Vec<Vec<Cell<'_>>> {
+    let cell = rx(r"\S+(?: \S+)*");
+    text.lines().map(|row| cell.find_iter(row).map(|m| Cell {
+        column: row[..m.start()].chars().count(),
+        text: m.as_str(),
+    }).collect()).collect()
+}
+
+fn labeled<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str) -> Vec<&'a str> {
+    let label = rx(pattern);
+    let mut values = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        for cell in row {
+            let Some(captures) = label.captures(cell.text) else { continue };
+            let rest = captures[1].trim();
+            if !rest.is_empty() {
+                values.push(rest);
+            } else if let Some(next) = rows.get(index + 1).and_then(|r|
+                r.iter().find(|next| next.column.abs_diff(cell.column) <= 3)) {
+                values.push(next.text);
+            }
+        }
+    }
+    values
+}
+
+fn ibans(text: &str) -> BTreeSet<String> {
+    rx(r"(?i-u:\b[A-Z]{2}[ \t]?[0-9]{2})").find_iter(text).filter_map(|m| {
+        let prefix = m.as_str()[..2].to_ascii_uppercase();
+        let length = iban_len(&prefix);
+        let candidate: String = text[m.start()..].chars()
+            .filter(|c| !matches!(c, ' ' | '\t'))
+            .take(length).map(|c| c.to_ascii_uppercase()).collect();
+        valid_iban(&candidate).then_some(candidate)
+    }).collect()
+}
+
+fn invoice_amount(rows: &[Vec<Cell<'_>>]) -> String {
+    let number = rx(r"(?i)^(?:EUR|€)?\s*([0-9]{1,3}(?:\.[0-9]{3})+,[0-9]{2}|[0-9]+[,.][0-9]{2})\s*(?:EUR|€)?$");
+    for pattern in [
+        r"(?i)^(?:Restbetrag|Restzahlung|Noch zu zahlen)\s*[:#]?\s*(.*)$",
+        r"(?i)^(?:(?:Amount due\s*/\s*)?(?:Zu zahlender Betrag|Zahlbetrag|Offener Betrag)|Amount due|F[äa]lliger Betrag|Zur Zahlung f[äa]llig)\s*[:#]?\s*(.*)$",
+        r"(?i)^(?:Gesamtbetrag|Rechnungsbetrag|Rechnungssumme|Endsumme(?: inkl\. MwSt\.)?)(?:\s*\(brutto\))?\s*[:#]?\s*(.*)$",
+    ] {
+        let amounts: BTreeSet<_> = labeled(rows, pattern).into_iter()
+            .filter_map(|value| number.captures(value))
+            .map(|m| if m[1].contains(',') { m[1].to_owned() } else { m[1].replace('.', ",") })
+            .collect();
+        if !amounts.is_empty() { return unique(amounts); }
+    }
+    String::new()
+}
+
 pub fn extract(text: &str) -> (Payment, Vec<String>) {
-    let mut accounts = BTreeSet::new();
-    for m in rx(r"\b[A-Z]{2}[0-9]{2}").find_iter(text) {
-        let n = iban_len(&m.as_str()[..2]);
-        let tail = &text[m.start()..];
-        let mut chars = tail.chars().filter(|c| !matches!(c,' '|'\t'));
-        let candidate: String = chars.by_ref().take(n).collect();
-        if valid_iban(&candidate) { accounts.insert(candidate); }
-    }
-    let name_pattern = r"(?im)(?:^|[ \t]{2,})(?:Kontoinhaberin?|Kontoinhaber|Zahlungsempfänger|Empfänger)[ \t]*:[ \t]*(\S+(?: \S+)*)";
-    let labels = rx(name_pattern);
-    let mut name = if labels.is_match(text) { field(text,name_pattern) } else { header_name(text) };
-    let amount = if rx(r"\b(CHF|USD|GBP|SEK|NOK|DKK|PLN|CZK)\b|[$£]").is_match(text) { String::new() } else {
-        field(text,r"(?i)(?:zu zahlender Betrag|Zahlbetrag|offener Betrag|Gesamtbetrag|Rechnungsbetrag)(?:[ \t]*\([ \t]*brutto[ \t]*\))?[ \t:]*(?:EUR|€)?[ \t]*(\d+(?:\.\d{3})*,\d{2}|\d+\.\d{2})\b")
-    };
-    let mut purpose = field(text,r"(?im)^\s*(?:Verwendungszweck|Zahlungsgrund)[ \t]*:[ \t]*([^\n]+)");
-    if purpose.is_empty() {
+    let rows = columns(text);
+    let old = labeled(&rows, r"(?i)^(?:Alte|Bisherige|Ungültige) IBAN(?:\s*\([^)]*\))?\s*[:#]?\s*(.*)$")
+        .into_iter().flat_map(ibans).collect::<BTreeSet<_>>();
+    let mut accounts = text.lines().flat_map(ibans).filter(|iban| !old.contains(iban)).collect::<BTreeSet<_>>();
+    let preferred = labeled(&rows, r"(?i)^(?:Aktuelle|Neue) IBAN\s*[:#]?\s*(.*)$")
+        .into_iter().flat_map(ibans).filter(|iban| !old.contains(iban)).collect::<BTreeSet<_>>();
+
+    let names = labeled(&rows, r"(?i)^(?:(?:Beneficiary\s*/\s*)?(?:(?:Zahlungs)?empf(?:ä|a|[eé]a?)nger|Beg[üu]nstigter|Kontoinhaber(?:in)?|Konto lautend auf|Zahlbar an)|Beneficiary)\s*:\s*(.*)$");
+    let name_values: BTreeSet<_> = names.into_iter().map(|name|
+        rx(r"(?i)\s+(?:IBAN|BIC)\s*:").split(name).next().unwrap_or(name).trim())
+        .filter(|name| !name.is_empty() && name.chars().count() <= 70 && !name.contains(':'))
+        .map(str::to_owned).collect();
+    let mut name = if name_values.is_empty() { header_name(text) } else { unique(name_values) };
+    let amount = if rx(r"\b(CHF|USD|GBP|SEK|NOK|DKK|PLN|CZK)\b|[$£]").is_match(text) {
+        String::new()
+    } else { invoice_amount(&rows) };
+    let purposes: BTreeSet<_> = labeled(&rows,
+        r"(?i)^(?:Verwendungszweck|Zahlungsgrund|Zahlungsreferenz|Bei Zahlung angeben|Überweisungstext|Payment reference|Referenz bei Überweisung|Kassenzeichen)\s*:\s*(.*)$")
+        .into_iter().filter(|value| !value.is_empty() && value.chars().count() <= 140)
+        .map(str::to_owned).collect();
+    let purpose = if purposes.is_empty() {
         let number = field(text,r"(?i)\b(?:Rechnungsnummer|Rechnungs[- ]?Nr\.?)[ \t:#]*([\w/.-]*\d[\w/.-]*)");
-        if !number.is_empty() { purpose = format!("Rechnung {number}"); }
-    }
-    // A seller account must not be proposed when the invoice directs payment elsewhere.
-    if external_payment_notice(text) {
+        if number.is_empty() { String::new() } else { format!("Rechnung {number}") }
+    } else { unique(purposes) };
+
+    // Seller details are inappropriate when the invoice directs payment elsewhere.
+    let external = external_payment_notice(text);
+    if external {
         accounts.clear();
         name.clear();
     }
-    let iban = unique(accounts.clone());
-    let bic = if iban.is_empty() { String::new() } else { field(text,r"\bBIC[ \t:]*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b") };
-    (Payment { name,iban,bic,amount,purpose },accounts.into_iter().collect())
+    let iban = if !external && !preferred.is_empty() { unique(preferred) } else { unique(accounts.clone()) };
+    let bic = if !iban.is_empty() && accounts.len() == 1 && old.is_empty() {
+        field(text,r"\bBIC[ \t:]*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b")
+    } else { String::new() };
+    (Payment { name,iban,bic,amount,purpose }, accounts.into_iter().collect())
 }
 
 impl Payment {
@@ -154,5 +222,33 @@ mod tests {
     #[test]
     fn columns() {
         assert_eq!(header_name("Kunde AG         Nordlicht Beratung\nEinkauf          GmbH & Co. KG\nOrt              USt-ID: TEST"),"Nordlicht Beratung GmbH & Co. KG");
+    }
+}
+
+#[cfg(test)]
+mod invoice_corpus {
+    use super::extract;
+    const EXPECTED: &str = include_str!("../tests/invoices/expectations.csv");
+    const TEXTS: &str = include_str!("../tests/invoices/layout-corpus.txt");
+
+    #[test]
+    fn matches_pdf_and_ocr_examples() {
+        let mut errors = Vec::new();
+        for row in EXPECTED.lines().skip(1) {
+            let expected: Vec<_> = row.split(';').collect();
+            for extension in ["pdf", "png"] {
+                let file = format!("{}.{extension}", expected[0]);
+                let prefix = format!("@{file}\n");
+                let text = TEXTS.split_once(&prefix).expect(&file).1.split("\n@").next().unwrap();
+                let (actual, _) = extract(text);
+                let fields = [actual.name, actual.iban, actual.amount, actual.purpose];
+                for (index, got) in fields.iter().enumerate() {
+                    if got != expected[index + 1] {
+                        errors.push(format!("{file} Feld {}: {:?} statt {:?}", index + 1, got, expected[index + 1]));
+                    }
+                }
+            }
+        }
+        assert!(errors.is_empty(), "{}", errors.join("\n"));
     }
 }

@@ -1,0 +1,320 @@
+@01_klassisch.pdf
+        TESTRECHNUNG / NICHT ZAHLEN
+        Rechnung
+        Zahlungsempfänger: Musterkontor Nord GmbH
+        Rechnung an
+        Musterkundschaft 1
+          Pos. Leistung                                                           Menge             EUR
+          01    Büromaterial                                                      1                 49,98
+                                                                           Zu zahlender Betrag: 49,98 EUR
+        Rechnungsnummer: TEST-01-2026
+        Rechnungsdatum: 09.11.2026
+        IBAN: DE09 0000 0000 0000 0000 01
+        Verwendungszweck: REF-01-2101
+        Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@01_klassisch.png
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Zahlungsempfänger: Musterkontor Nord GmbH
+         Rechnung an
+         Musterkundschaft 1
+           Pos. Leistung                                                                      Menge               EUR
+           01      Biromaterial                                                               1                   49,98
+                                                                                      Zu zahlender Betrag: 49,98 EUR
+         Rechnungsnummer: TEST-01-2026
+         Rechnungsdatum: 09.11.2026
+         IBAN: DE09 0000 0000 0000 0000 01
+         Verwendungszweck: REF-01-2101
+         Fiktiver Beleg - Kontodaten ausschlieBlich für Softwaretests
+@02_briefkopf.pdf
+        TESTRECHNUNG / NICHT ZAHLEN
+        Rechnung
+                                                                    Fiktivwerk Studio
+                                                                    GmbH & Co. KG
+                                                                    USt-ID: TESTKENNUNG
+        Rechnung an
+        Musterkundschaft 2
+          Pos. Leistung                                                           Menge             EUR
+          01    Layoutentwurf                                                     1                 127,50
+        Rechnungs-Nr.: TEST-02-2026
+        Rechnungsdatum: 10.11.2026
+        Zahlungsgrund:                                              Bankverbindung:
+        REF-02-2102                                                 DE79 0000 0000 0000 0000 02
+        Gesamtbetrag:
+        127,50 €
+        Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@02_briefkopf.png
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+                                                                              Fiktivwerk Studio
+                                                                              GmbH & Co. KG
+                                                                              USt-ID: TESTKENNUNG
+         Rechnung an
+         Musterkundschaft 2
+           Pos. Leistung                                                                      Menge               EUR
+           01     Layoutentwurf                                                               1                   127,50
+         Rechnungs-Nr.: TEST-02-2026
+         Rechnungsdatum: 10.11.2026
+         Zahlungsgrund:                                                       Bankverbindung:
+         REF-02-2102                                                          DE79 0000 0000 0000 0000 02
+         Gesamtbetrag:
+         127,50 €
+         Fiktiver Beleg - Kontodaten ausschlieBlich für Softwaretests
+@03_zahlblock.pdf
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Rechnung an
+         Musterkundschaft 3
+          Pos. Leistung                                                                   Menge              EUR
+          01     Versandverpackungen                                                      1                  314,16
+         Rechnungsnummer: TEST-03-2026
+         Rechnungsdatum: 11.11.2026
+         Kontoinhaber:
+         Beispielversand Süd AG
+         SEPA-IBAN:
+         DE52 0000 0000 0000 0000 03
+         Zahlbetrag:
+         314,16 EUR
+         Bei Zahlung angeben:
+         REF-03-2103
+         Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@03_zahlblock.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Rechnung an
+          Musterkundschaft 3
+            Pos.     Leistung                                                                           Menge                  EUR
+            01       Versandverpackungen                                                                                       314,16
+          Rechnungsnummer: TEST-03-2026
+          Rechnungsdatum: 11.11.2026
+          Kontoinhaber:
+          Beispielversand Süd AG
+          SEPA-IBAN:
+          DE52 0000 0000 0000 0000 03
+          Zahlbetrag:
+          314,16 EUR
+          Bei Zahlung angeben:
+          REF-03-2103
+          Fiktiver Beleg - Kontodaten ausschließlich für Softwaretests
+@04_marktplatz.pdf
+          TESTRECHNUNG / NICHT ZAHLEN
+          Rechnung
+          Rechnung an
+          Musterkundschaft 4
+            Pos. Leistung                                                                          Menge                EUR
+            01     Zubehör für den Schreibtisch                                                    1                    29,99
+                                                                                    Rechnungsbetrag (brutto): EUR 29,99
+          Rechnungs-Nr.: TEST-04-2026
+          Rechnungsdatum: 12.11.2026
+                                                                          Begünstigter:
+                                                                          Musterhandel West GmbH
+          Zahlungsreferenz:                                               IBAN für Überweisungen:
+          REF-04-2104                                                     DE25000000000000000004
+          Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@04_marktplatz.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Rechnung an
+          Musterkundschaft 4
+            Pos.     Leistung                                                                           Menge                  EUR
+            01      Zubehor für den Schreibtisch                                                         1                     29,99
+                                                                                        Rechnungsbetrag (brutto): EUR 29,99
+          Rechnungs-Nr.: TEST-04-2026
+          Rechnungsdatum: 12.11.2026
+                                                                              Begünstigter:
+                                                                              Musterhandel West GmbH
+          Zahlungsreferenz:                                                   IBAN für Überweisungen:
+          REF-04-2104                                                          DE25000000000000000004
+          Fiktiver Beleg - Kontodaten ausschließlich für Softwaretests
+@05_rechte_spalte.pdf
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Rechnung an                                                 Empfänger:
+         Musterkundschaft 5                                          Testatelier Faden GbR
+                                                                     Kontonummer (IBAN):
+                                                                     DE95 0000 0000 0000 0000 05
+                                                                     Offener Betrag:
+                                                                     1.180,75 €
+          Pos. Leistung
+                                                                     Überweisungstext:
+          01     Textilentwurf
+                                                                     REF-05-2105
+         Rechnungsnummer: TEST-05-2026
+         Rechnungsdatum: 13.11.2026
+         Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@05_rechte_spalte.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Rechnung an                                                           Empfänger:
+          Musterkundschaft 5                                                    Testatelier Faden GbR
+                                                                                Kontonummer (IBAN):
+                                                                                DE95 0000 0000 0000 0000 05
+                                                                                Offener Betrag:
+                                                                                1.180,75 €
+            Pos.     Leistung
+                                                                                Überweisungstext:
+            01      Textilentwurf
+                                                                                REF-05-2105
+          Rechnungsnummer: TEST-05-2026
+          Rechnungsdatum: 13.11.2026
+          Fiktiver Beleg - Kontodaten ausschließlich für Softwaretests
+@06_zweisprachig.pdf
+          TESTRECHNUNG / NICHT ZAHLEN
+          Invoice / Rechnung
+          Rechnung an
+          Musterkundschaft 6
+            Pos. Leistung                                                                          Menge                EUR
+            01     Montagematerial                                                                 1                    75,40
+          Rechnungs-Nr.: TEST-06-2026
+          Rechnungsdatum: 14.11.2026
+          Beneficiary / Empfänger:                                        Bank account / IBAN:
+          Example Parts EU GmbH                                           DE68000000000000000006
+          Amount due / Zahlbetrag:                                        Payment reference:
+          75.40 EUR                                                       REF-06-2106
+          Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@06_zweisprachig.png
+          TESTRECHNUNG / NICHT ZAHLEN
+          Invoice / Rechnung
+          Rechnung an
+          Musterkundschaft 6
+            Pos.     Leistung                                                                           Menge                  EUR
+            01      Montagematerial                                                                     1                      75,40
+          Rechnungs-Nr.: TEST-06-2026
+          Rechnungsdatum: 14.11.2026
+          Beneficiary / Empféanger:                                           Bank account / IBAN:
+          Example Parts EU GmbH                                                DE68000000000000000006
+          Amount due / Zahlbetrag:                                            Payment reference:
+          75.40 EUR                                                            REF-06-2106
+          Fiktiver Beleg - Kontodaten ausschlieBlich für Softwaretests
+@07_fussleiste.pdf
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Rechnung an
+         Musterkundschaft 7
+          Pos. Leistung                                                                   Menge              EUR
+          01     Wartung und Einrichtung                                                  1                  247,31
+         Endsumme inkl. MwSt.:
+         247,31 €
+         Zahlbar an:                                            IBAN:
+         Übungsservice Rhein OHG                                DE41 0000 0000 0000 0000 07
+         Rechnungsnummer: TEST-07-2026
+         Rechnungsdatum: 15.11.2026                             Referenz bei Überweisung:
+                                                                REF-07-2107
+         Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@07_fussleiste.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Rechnung an
+          Musterkundschaft 7
+            Pos.     Leistung                                                                                                  EUR
+            01      Wartung und Einrichtung                                                                                    247,31
+           Endsumme inkl. MwSt.:
+           247,31 €
+          Zahlbar an:                                                     IBAN:
+          Übungsservice Rhein OHG                                         DE41 0000 0000 0000 0000 07
+          Rechnungsnummer: TEST-07-2026
+          Rechnungsdatum: 15.11.2026                                      Referenz bei Überweisung:
+                                                                          REF-07-2107
+          Fiktiver Beleg - Kontodaten ausschließlich für Softwaretests
+@08_abzueglich_abschlag.pdf
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Kontoinhaber:
+         Probe-Energie Alpha GmbH
+         Rechnung an
+         Musterkundschaft 8
+          Pos. Leistung                                                                   Menge              EUR
+          01     Planungspauschale                                                        1                  1.000,00
+                                                                         Rechnungssumme: 1.000,00 EUR
+                                                                         Abzüglich Abschlag: 160,00 EUR
+                                                                         Restbetrag: 840,00 EUR
+         Rechnungs-Nr.: TEST-08-2026
+         Rechnungsdatum: 16.11.2026
+         Überweisung auf IBAN:
+         DE14 0000 0000 0000 0000 08
+         Kassenzeichen:
+         REF-08-2108
+         Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@08_abzueglich_abschlag.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Kontoinhaber:
+          Probe-Energie Alpha GmbH
+          Rechnung an
+          Musterkundschaft 8
+            Pos.     Leistung                                                                           Menge                  EUR
+            01      Planungspauschale                                                                   1                      1.000,00
+                                                                                     Rechnungssumme: 1.000,00 EUR
+                                                                                     Abzüglich Abschlag: 160,00 EUR
+                                                                                     Restbetrag: 840,00 EUR
+          Rechnungs-Nr.: TEST-08-2026
+          Rechnungsdatum: 16.11.2026
+          Überweisung auf IBAN:
+          DE14 0000 0000 0000 0000 08
+          Kassenzeichen:
+          REF-08-2108
+          Fiktiver Beleg - Kontodaten ausschließlich für Softwaretests
+@09_zwei_bankkonten.pdf
+         TESTRECHNUNG / NICHT ZAHLEN
+         Rechnung
+         Rechnung an
+         Musterkundschaft 9
+          Pos. Leistung                                                                   Menge              EUR
+          01     Frachtservice                                                            1                  59,80
+         Zur Zahlung fällig:
+         EUR 59,80
+         Zahlungsempfänger:                                          Alte IBAN (ungültig für diese Rechnung):
+         Demo Logistik Mitte KG                                      DE79 0000 0000 0000 0000 99
+         Aktuelle IBAN:                                              Verwendungszweck:
+         DE84 0000 0000 0000 0000 09                                 REF-09-2109
+         Rechnungsnummer: TEST-09-2026
+         Rechnungsdatum: 17.11.2026
+         Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@09_zwei_bankkonten.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+          Rechnung an
+          Musterkundschaft 9
+            Pos.     Leistung                                                                           Menge                  EUR
+            01      Frachtservice                                                                        1                     59,80
+          Zur Zahlung fällig:
+          EUR 59,80
+          Zahlungsempfénger:                                                    Alte IBAN (ungliltig fir diese Rechnung):
+          Demo Logistik Mitte KG                                                DE79 0000 0000 0000 0000 99
+          Aktuelle IBAN:                                                        Verwendungszweck:
+          DE84 0000 0000 0000 0000 09                                           REF-09-2109
+          Rechnungsnummer: TEST-09-2026
+          Rechnungsdatum: 17.11.2026
+          Fiktiver Beleg - Kontodaten ausschlieBlich für Softwaretests
+@10_ohne_zahlungstext.pdf
+          TESTRECHNUNG / NICHT ZAHLEN
+          Rechnung
+                                                                               Konto lautend auf:
+                                                                               Fiktiv IT Werkstatt e.K.
+          Rechnung an
+          Musterkundschaft 10
+            Pos. Leistung                                                                          Menge                EUR
+            01     Fernwartung                                                                     1                    196,45
+                                                                               Fälliger Betrag:
+                                                                               196,45 EUR
+          Rechnungsnummer: TEST-10-2026
+          Rechnungsdatum: 18.11.2026
+          IBAN / Zahlungskonto:
+          DE57000000000000000010
+          Fiktiver Beleg · Kontodaten ausschließlich für Softwaretests
+@10_ohne_zahlungstext.png
+          TESTRECHNUNG / NICHT ZAHLEN
+           Rechnung
+                                                                                    Konto lautend auf:
+                                                                                    Fiktiv IT Werkstatt e.K.
+          Rechnung an
+          Musterkundschaft 10
+            Pos.     Leistung                                                                           Menge                  EUR
+            01      Fernwartung                                                                         1                      196,45
+                                                                                    Falliger Betrag:
+                                                                                    196,45 EUR
+          Rechnungsnummer: TEST-10-2026
+          Rechnungsdatum: 18.11.2026
+          IBAN / Zahlungskonto:
+          DE57000000000000000010
+          Fiktiver Beleg - Kontodaten ausschlieBlich für Softwaretests

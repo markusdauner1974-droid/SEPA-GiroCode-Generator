@@ -70,10 +70,19 @@ fn pdf_text(page: &poppler::Page, width: f64, height: f64) -> Result<(String, Ve
     let mut line = 1;
     let mut token = String::new();
     let mut bounds: Option<(f64, f64, f64, f64)> = None;
+    let mut previous: Option<(f64, f64, f64)> = None;
     for (ch, rect) in text.chars().zip(boxes).chain(std::iter::once(('\n', poppler::ffi::PopplerRectangle {
         x1: 0., y1: 0., x2: 0., y2: 0.,
     }))) {
-        if ch.is_whitespace() {
+        // Poppler sometimes returns adjacent columns without a separating
+        // character. Split a word when the glyphs jump to another line or column.
+        let height = (rect.y2 - rect.y1).max(1.);
+        let y = (rect.y1 + rect.y2) / 2.;
+        let crossed_gap = previous.is_some_and(|(right, center, prev_height)| {
+            let size = height.max(prev_height);
+            rect.x1 - right > size * 0.85 || (y - center).abs() > size * 0.7
+        });
+        if ch.is_whitespace() || crossed_gap {
             if let Some((x1, y1, x2, y2)) = bounds.take() {
                 use std::fmt::Write;
                 writeln!(tsv, "5\t1\t0\t0\t{line}\t0\t{}\t{}\t{}\t{}\t100\t{token}",
@@ -81,14 +90,18 @@ fn pdf_text(page: &poppler::Page, width: f64, height: f64) -> Result<(String, Ve
                     ((x2 - x1) * scale).round(), ((y2 - y1) * scale).round()).unwrap();
                 token.clear();
             }
-            if ch == '\n' { line += 1; }
-        } else {
-            token.push(ch);
-            bounds = Some(match bounds {
-                Some((x1, y1, x2, y2)) => (x1.min(rect.x1), y1.min(rect.y1), x2.max(rect.x2), y2.max(rect.y2)),
-                None => (rect.x1, rect.y1, rect.x2, rect.y2),
-            });
         }
+        if ch.is_whitespace() {
+            previous = None;
+            if ch == '\n' { line += 1; }
+            continue;
+        }
+        token.push(ch);
+        bounds = Some(match bounds {
+            Some((x1, y1, x2, y2)) => (x1.min(rect.x1), y1.min(rect.y1), x2.max(rect.x2), y2.max(rect.y2)),
+            None => (rect.x1, rect.y1, rect.x2, rect.y2),
+        });
+        previous = Some((rect.x2, y, height));
     }
     Ok((layout_text(&tsv)?, selection::words(&tsv)))
 }
