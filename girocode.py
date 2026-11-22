@@ -44,8 +44,19 @@ class Application:
         pane.pack(fill='both', expand=True)
         left = ttk.Frame(pane)
         pane.add(left, weight=3)
-        right = ttk.Frame(pane, padding=16)
-        pane.add(right, weight=2)
+        panel = ttk.Frame(pane)
+        pane.add(panel, weight=2)
+        self.form_view = tk.Canvas(panel, width=370, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(panel, orient='vertical', command=self.form_view.yview)
+        scrollbar.pack(side='right', fill='y')
+        self.form_view.configure(yscrollcommand=scrollbar.set)
+        self.form_view.pack(fill='both', expand=True)
+        right = ttk.Frame(self.form_view, padding=12)
+        form = self.form_view.create_window(0, 0, anchor='nw', window=right)
+        right.bind('<Configure>', lambda event: self.form_view.configure(
+            scrollregion=self.form_view.bbox('all')))
+        self.form_view.bind('<Configure>', lambda event: self.form_view.itemconfigure(
+            form, width=event.width))
         nav = ttk.Frame(left)
         nav.pack(fill='x')
         for label, action in [('‹', lambda: self.move(-1)), ('›', lambda: self.move(1)),
@@ -79,6 +90,12 @@ class Application:
         self.notice.pack(anchor='w', pady=6)
         self.generate = ttk.Button(right, text='GiroCode erstellen', command=self.show_code, state='disabled')
         self.generate.pack(anchor='w', pady=8)
+        self.qr_label = ttk.Label(right, anchor='center')
+        self.qr_photo = None
+        self.qr_source = None
+        self.qr_label.bind('<Configure>', lambda event: self.draw_code(event.width))
+        for field in self.fields:
+            field.trace_add('write', self.clear_code)
 
     def set_font_size(self, size):
         for ui_font in self.ui_fonts:
@@ -117,6 +134,7 @@ class Application:
         self.accounts.configure(values=())
         for field in self.fields:
             field.set('')
+        self.form_view.yview_moveto(0)
         self.opener.configure(state='disabled')
         self.generate.configure(state='disabled')
         self.status.set('Rechnung wird lokal gelesen …')
@@ -159,15 +177,28 @@ class Application:
         except ValueError as exc:
             messagebox.showwarning('Zahlungsdaten prüfen', str(exc))
             return
-        dialog = tk.Toplevel(self.root)
-        dialog.title('Mit der Banking-App scannen')
-        photo = ImageTk.PhotoImage(image)
-        qr = ttk.Label(dialog, image=photo)
-        qr.image = photo
-        qr.pack(padx=10, pady=10)
-        ttk.Button(dialog, text='Schließen', command=dialog.destroy).pack(pady=(0, 12))
-        dialog.transient(self.root)
-        dialog.grab_set()
+        self.qr_source = image
+        self.qr_label.pack(fill='x', pady=4)
+        self.draw_code(self.generate.master.winfo_width() - 24)
+        self.root.update_idletasks()
+        self.form_view.yview_moveto(1)
+
+    def draw_code(self, width):
+        if self.qr_source is None:
+            return
+        side = min(self.qr_source.width, max(1, width), max(1, self.form_view.winfo_height() - 20))
+        if self.qr_photo is None or self.qr_photo.width() != side:
+            image = self.qr_source.resize((side, side), Image.Resampling.NEAREST)
+            self.qr_photo = ImageTk.PhotoImage(image)
+            self.qr_label.configure(image=self.qr_photo)
+
+    def clear_code(self, *_):
+        if self.qr_source is not None:
+            self.qr_source = None
+            self.qr_label.pack_forget()
+            self.qr_label.configure(image='')
+            self.qr_photo = None
+
 
 
 if __name__ == '__main__':
