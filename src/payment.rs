@@ -92,10 +92,10 @@ fn columns(text: &str) -> Vec<Vec<Cell<'_>>> {
 }
 
 fn labeled<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str) -> Vec<&'a str> {
-    labeled_cells(rows, pattern, false)
+    labeled_cells(rows, pattern, None)
 }
 
-fn labeled_cells<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str, across_row: bool) -> Vec<&'a str> {
+fn labeled_cells<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str, across_row: Option<&Regex>) -> Vec<&'a str> {
     let label = rx(pattern);
     let mut values = Vec::new();
     for (index, row) in rows.iter().enumerate() {
@@ -104,11 +104,16 @@ fn labeled_cells<'a>(rows: &'a [Vec<Cell<'a>>], pattern: &str, across_row: bool)
             let rest = captures.get(1).unwrap().as_str().trim();
             if !rest.is_empty() {
                 values.push(rest);
-            } else if across_row && column_index + 1 < row.len() {
-                // A totals table often prints the amount at the right edge.
-                // Let the amount parser reject rows with competing numbers.
-                values.extend(row[column_index + 1..].iter().map(|value| value.text));
-            } else if let Some(next) = rows.iter().skip(index + 1).take(2)
+                continue;
+            }
+            if let Some(number) = across_row {
+                let before = values.len();
+                values.extend(row[column_index + 1..].iter()
+                    .map(|value| value.text)
+                    .filter(|value| number.is_match(value)));
+                if values.len() > before { continue; }
+            }
+            if let Some(next) = rows.iter().skip(index + 1).take(2)
                 .find_map(|row| row.iter().find(|next| next.column.abs_diff(cell.column) <= 3)) {
                 // An intervening row can belong entirely to the other column.
                 values.push(next.text);
@@ -136,7 +141,7 @@ fn invoice_amount(rows: &[Vec<Cell<'_>>]) -> String {
         r"(?i)^(?:(?:Amount due\s*/\s*)?(?:Zu zahlender Betrag|Zahlbetrag|Offener Betrag)|Amount due|F[äa]lliger Betrag|Zur Zahlung f[äa]llig)\s*[:#]?\s*(.*)$",
         r"(?i)^(?:Gesamtbetrag|Rechnungsbetrag|Rechnungssumme|Endsumme(?: inkl\. MwSt\.)?)(?:\s*\(brutto\))?\s*[:#]?\s*(.*)$",
     ] {
-        let amounts: BTreeSet<_> = labeled_cells(rows, pattern, true).into_iter()
+        let amounts: BTreeSet<_> = labeled_cells(rows, pattern, Some(&number)).into_iter()
             .filter_map(|value| number.captures(value))
             .map(|m| if m[1].contains(',') { m[1].to_owned() } else { m[1].replace('.', ",") })
             .collect();
