@@ -11,6 +11,7 @@ pub struct Payment {
     pub invoice_number: String,
     pub customer_number: String,
     pub name_from_return_address: bool,
+    pub invoice_issuer: String,
 }
 
 fn rx(p: &str) -> Regex { Regex::new(p).expect("static regular expression") }
@@ -138,6 +139,8 @@ fn invoice_identifier(rows: &[Vec<Cell<'_>>], label: &str) -> String {
 fn return_address_name(rows: &[Vec<Cell<'_>>]) -> String {
     let postal = rx(r"\b[0-9]{5} [\p{L}][\p{L} .'-]*$");
     let house_number = rx(r"\s[0-9]+[a-zA-Z]?(?:[/-][0-9]+)?$");
+    let separated = rx(r"^(.+?)\s+[·•|:–-]\s+(.+)$");
+    let street_shape = rx(r"(?i)(?:stra(?:ße|sse)|str\.|weg|platz|allee|gasse|ring)\s+\d|^(?:am|im|an der|auf dem)\s");
     let mut names = BTreeSet::new();
     for (index, row) in rows.iter().take(30).enumerate() {
         for sender in row {
@@ -148,7 +151,17 @@ fn return_address_name(rows: &[Vec<Cell<'_>>]) -> String {
                 else { continue };
             // A customer address needs separate name, street and town lines.
             if customer_row < 2 { continue; }
-            let before_zip = sender.text[..zip.start()].trim_end();
+            let before_zip = sender.text[..zip.start()]
+                .trim_end_matches([' ', ',', '·', '•', '|', '–', '-']);
+            if let Some(parts) = separated.captures(before_zip) {
+                let name = parts[1].trim();
+                let street = parts[2].trim();
+                if (3..=70).contains(&name.chars().count()) && name.contains(' ')
+                    && !name.contains(':') && street_shape.is_match(street)
+                    && house_number.is_match(street) {
+                    names.insert(name.to_owned());
+                }
+            }
             for street in rows[..index].iter().rev().take(8).flatten() {
                 if street.column.abs_diff(sender.column) > 3 || !house_number.is_match(street.text) {
                     continue;
@@ -178,13 +191,17 @@ fn ibans(text: &str) -> BTreeSet<String> {
 }
 
 fn invoice_amount(rows: &[Vec<Cell<'_>>]) -> String {
-    let number = rx(r"(?i)^(?:EUR|€)?\s*([0-9]{1,3}(?:\.[0-9]{3})+,[0-9]{2}|[0-9]+[,.][0-9]{2})\s*(?:EUR|€)?$");
-    for pattern in [
-        r"(?i)^(?:Restbetrag|Restzahlung|Noch zu zahlen)\s*[:#]?\s*(.*)$",
-        r"(?i)^(?:(?:Amount due\s*/\s*)?(?:Zu zahlender Betrag|Zahlbetrag|Offener Betrag)|Amount due|F[äa]lliger Betrag|Zur Zahlung f[äa]llig)\s*[:#]?\s*(.*)$",
-        r"(?i)^(?:Gesamtbetrag|Rechnungsbetrag|Rechnungssumme|Endbetrag|Endsumme(?: inkl\. MwSt\.)?)(?:\s*\(brutto\))?\s*[:#]?\s*(.*)$",
+    let number = rx(r"(?i)^(?:EUR|€)?\s*_?\s*([0-9]{1,3}(?:\.[0-9]{3})+,[0-9]{2}|[0-9]+[,.][0-9]{2})\s*(?:[∗*¹²³]+\s*)?(?:EUR|€)?\s*[∗*¹²³]*$");
+    // Only accept a suffix made up of punctuation, a footnote marker or an
+    // explicit gross qualifier. A net total is a different field.
+    const AMOUNT_SUFFIX: &str = r"\s*(?:(?:\(\s*brutto\s*\)|brutto|(?:inkl\.?|einschl\.?)\s*(?:MwSt\.?|USt\.?))\s*)?(?:[∗*¹²³]+\s*)?[:#]?\s*(?:[∗*¹²³]+\s*)?(.*)$";
+    for label in [
+        r"Restbetrag|Restbetr\.?|Restzahlung|Noch zu zahlen",
+        r"(?:(?:Amount due\s*/\s*)?(?:Zu zahlender Betrag|Zahlbetrag|Zahlbetr\.?|Offener Betrag)|Amount due|F[äa]lliger Betrag|Zur Zahlung f[äa]llig)",
+        r"Gesamtbetrag|Gesamtbetr\.?|Ges\.\s*-?\s*Betr\.?|Rechnungsbetrag|Rechnungsbetr\.?|Rech(?:n)?\.\s*-?\s*Betr\.?|Rechnungssumme|Endbetrag|Endbetr\.?|End\s*-\s*Betr(?:ag|\.)?|Endsumme",
     ] {
-        let amounts: BTreeSet<_> = labeled_cells(rows, pattern, Some(&number)).into_iter()
+        let pattern = format!(r"(?i)^(?:{label}){AMOUNT_SUFFIX}");
+        let amounts: BTreeSet<_> = labeled_cells(rows, &pattern, Some(&number)).into_iter()
             .filter_map(|value| number.captures(value))
             .map(|m| if m[1].contains(',') { m[1].to_owned() } else { m[1].replace('.', ",") })
             .collect();
@@ -201,17 +218,22 @@ pub fn extract(text: &str) -> (Payment, Vec<String>) {
     let preferred = labeled(&rows, r"(?i)^(?:Aktuelle|Neue) IBAN\s*[:#]?\s*(.*)$")
         .into_iter().flat_map(ibans).filter(|iban| !old.contains(iban)).collect::<BTreeSet<_>>();
 
-    let names = labeled(&rows, r"(?i)^(?:(?:Beneficiary\s*/\s*)?(?:(?:Zahlungs)?empf(?:ä|a|[eé]a?)nger|Beg[üu]nstigter|Kontoinhaber(?:in)?|Konto lautend auf|Zahlbar an)|Beneficiary)\s*:\s*(.*)$");
+    const NAME_LABEL: &str = r"(?i)^(?:(?:Beneficiary\s*/\s*)?(?:(?:Zahlungs)?empf(?:ä|a|[eé]a?)nger|Beg[üu]nstigter|Kontoinhaber(?:in)?|Konto lautend auf|Zahlbar an)|Beneficiary)\s*:\s*(.*)$";
+    let names = labeled(&rows, NAME_LABEL);
     let name_values: BTreeSet<_> = names.into_iter().map(|name|
         rx(r"(?i)\s+(?:IBAN|BIC)\s*:").split(name).next().unwrap_or(name).trim())
         .filter(|name| !name.is_empty() && name.chars().count() <= 70 && !name.contains(':'))
         .map(str::to_owned).collect();
-    let mut name = if name_values.is_empty() { header_name(text) } else { unique(name_values.clone()) };
-    let mut name_from_return_address = false;
-    if name.is_empty() && name_values.is_empty() && accounts.len() == 1 {
-        name = return_address_name(&rows);
-        name_from_return_address = !name.is_empty();
-    }
+    let header_issuer = header_name(text);
+    let from_address = header_issuer.is_empty();
+    let invoice_issuer = if from_address { return_address_name(&rows) } else { header_issuer };
+    let use_issuer = name_values.is_empty() && (!from_address || accounts.len() == 1);
+    let mut name = if use_issuer {
+        invoice_issuer.clone()
+    } else {
+        unique(name_values)
+    };
+    let mut name_from_return_address = use_issuer && from_address && !name.is_empty();
     let amount = if rx(r"\b(CHF|USD|GBP|SEK|NOK|DKK|PLN|CZK)\b|[$£]").is_match(text) {
         String::new()
     } else { invoice_amount(&rows) };
@@ -239,7 +261,7 @@ pub fn extract(text: &str) -> (Payment, Vec<String>) {
         field(text,r"\bBIC[ \t:]*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b")
     } else { String::new() };
     (Payment { name, iban, bic, amount, purpose, invoice_number, customer_number,
-        name_from_return_address }, accounts.into_iter().collect())
+        name_from_return_address, invoice_issuer }, accounts.into_iter().collect())
 }
 
 impl Payment {
@@ -334,6 +356,32 @@ mod tests {
         let (unrelated, _) = extract("Kundenauftrag: 4081\nRechnungsdatum: 04.07.2026");
         assert!(unrelated.invoice_number.is_empty());
         assert!(unrelated.customer_number.is_empty());
+    }
+
+    #[test]
+    fn recognizes_gross_end_amount_labels_and_footnotes() {
+        for label in ["Endbetrag*", "Endbetrag (brutto)*:", "Endbetr.:", "End-Betr.",
+                      "Ges.-Betr.", "Rech.-Betr.", "Endsumme inkl. MwSt."] {
+            let (payment, _) = extract(&format!("{label}              49,98 EUR"));
+            assert_eq!(payment.amount, "49,98", "{label}");
+        }
+        let (rest, _) = extract("Endbetrag*: 100,00 EUR\nRestbetr.: 80,00 EUR");
+        assert_eq!(rest.amount, "80,00");
+        let (net, _) = extract("Endbetrag netto: 42,00 EUR\nEndbetragsrabatt: 5,00 EUR");
+        assert!(net.amount.is_empty());
+    }
+
+    #[test]
+    fn separates_business_name_from_bank_account_holder() {
+        for separator in [" · ", " : "] {
+            let scan = format!(
+                "   KFZ-Service A. Muster{separator}Beispielstr. 11/5 · 12345 Musterstadt\n   Frau\n   Testkundin\n   Kundenweg 82\n   12345 Musterstadt\nEndbetr.*:              _782,01 €\nIBAN: DE89370400440532013000\nKontoinhaber: Alex Muster",
+            );
+            let (payment, _) = extract(&scan);
+            assert_eq!(payment.invoice_issuer, "KFZ-Service A. Muster");
+            assert_eq!(payment.name, "Alex Muster");
+            assert_eq!(payment.amount, "782,01");
+        }
     }
 
     #[test]

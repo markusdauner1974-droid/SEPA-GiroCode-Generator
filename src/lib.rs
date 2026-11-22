@@ -41,7 +41,7 @@ pub unsafe extern "C" fn giro_open(path: *const u8, len: usize) -> *mut Invoice 
                     "pages": pages.len(), "fields": [fields.name, fields.iban, fields.bic, fields.amount, fields.purpose],
                     "accounts": accounts, "externalPayment": payment::external_payment_notice(&text),
                     "invoiceNumber": fields.invoice_number, "customerNumber": fields.customer_number,
-                    "returnAddressName": fields.name_from_return_address,
+                    "returnAddressName": fields.name_from_return_address, "invoiceIssuer": fields.invoice_issuer,
                 }),
                 pages,
             }

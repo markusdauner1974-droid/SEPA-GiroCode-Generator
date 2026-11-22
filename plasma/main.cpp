@@ -238,6 +238,9 @@ private:
             }
         }
         QStringList numbers;
+        const QString issuer = details["invoiceIssuer"].toString();
+        if (!issuer.isEmpty() && issuer != fields[0]->text())
+            numbers.append(tr("Rechnungsaussteller: %1").arg(issuer));
         const QString invoiceNumber = details["invoiceNumber"].toString();
         const QString customerNumber = details["customerNumber"].toString();
         if (!invoiceNumber.isEmpty())
