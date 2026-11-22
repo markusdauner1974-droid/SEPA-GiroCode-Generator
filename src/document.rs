@@ -168,7 +168,7 @@ mod library_tests {
         cr.show_text("Beispiel GmbH").unwrap();
         cr.show_page().unwrap();
         let pdf = *surface.finish_output_stream().unwrap().downcast::<Vec<u8>>().unwrap();
-        let doc = poppler::Document::from_bytes(&glib::Bytes::from_owned(pdf), None).unwrap();
+        let doc = poppler::Document::from_data(&pdf, None).unwrap();
         let page = doc.page(0).unwrap();
         let (width, height) = page.size();
         let (text, words) = pdf_text(&page, width, height).unwrap();
