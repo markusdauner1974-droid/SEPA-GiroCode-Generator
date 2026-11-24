@@ -1,0 +1,67 @@
+name: Docling OCR Vergleich
+on:
+  push:
+    branches: [test/docling-vergleich]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testwerkzeuge installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin poppler-utils tesseract-ocr-deu jq
+      - name: Docling.rs und Modelle vorbereiten
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o /tmp/docling.tar.gz https://github.com/docling-project/docling.rs/releases/download/v2.86.14/docling-rs-v2.86.14-x86_64-unknown-linux-gnu.tar.gz
+          echo '7823f2dda8a8e7ea6c0e8b6f9cf36d09766c72b36ba560055eaaf267e8234c90  /tmp/docling.tar.gz' | sha256sum -c -
+          mkdir -p /tmp/docling-bin
+          tar -xzf /tmp/docling.tar.gz -C /tmp/docling-bin
+          find /tmp/docling-bin -type f -name docling-rs -exec cp {} /tmp/docling-rs \;
+          test -x /tmp/docling-rs
+          git clone --depth 1 --branch v2.86.14 https://github.com/docling-project/docling.rs.git /tmp/docling-src
+          /tmp/docling-src/scripts/install/download_dependencies.sh --no-asr --no-chunk --no-int8
+          du -sh .models
+      - name: Anonyme digitale Rechnung und Scan erstellen
+        run: |
+          mkdir -p test-output
+          rsvg-convert -f pdf -o test-output/digital.pdf tests/docling-comparison/rechnung.svg
+          rsvg-convert -f png -o test-output/scan.png tests/docling-comparison/rechnung.svg
+          pdftotext test-output/digital.pdf test-output/poppler.txt
+      - name: Digitale PDF und Scan erkennen
+        run: |
+          set -euo pipefail
+          /usr/bin/time -o test-output/docling-pdf-zeit.txt -f '%e s' /tmp/docling-rs --text-layer-only --to json test-output/digital.pdf > test-output/docling-pdf.json
+          /usr/bin/time -o test-output/docling-scan-zeit.txt -f '%e s' /tmp/docling-rs --ocr-engine ppocr --ocr-lang de --no-table-former --to json test-output/scan.png > test-output/docling-scan.json
+          /usr/bin/time -o test-output/tesseract-zeit.txt -f '%e s' tesseract test-output/scan.png test-output/tesseract -l deu+eng tsv
+          jq -e . test-output/docling-pdf.json >/dev/null
+          jq -e . test-output/docling-scan.json >/dev/null
+          grep -q 'RG2026/082' test-output/poppler.txt
+          grep -q 'RG2026/082' test-output/docling-pdf.json
+          grep -q '149,98' test-output/docling-pdf.json
+          jq -r '.. | strings' test-output/docling-pdf.json > test-output/docling-pdf.txt
+          jq -r '.. | strings' test-output/docling-scan.json > test-output/docling-scan.txt
+          cut -f 12 test-output/tesseract.tsv > test-output/tesseract.txt
+          for source in poppler docling-pdf docling-scan tesseract; do
+            printf '\n%s\n' "$source" >> test-output/vergleich.txt
+            for term in 'Muster Heiztechnik' 'RG2026/082' '13757' '149,98' 'DE89'; do
+              if tr '\n' ' ' < "test-output/$source.txt" | grep -Fqi "$term"; then
+                printf '  %s: gefunden\n' "$term" >> test-output/vergleich.txt
+              else
+                printf '  %s: nicht gefunden\n' "$term" >> test-output/vergleich.txt
+              fi
+            done
+          done
+          cat test-output/vergleich.txt
+      - name: Ergebnisse bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docling-vergleich-anonyme-rechnung
+          path: test-output/
+          if-no-files-found: ignore

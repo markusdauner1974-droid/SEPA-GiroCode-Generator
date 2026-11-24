@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754">
+<rect width="1240" height="1754" fill="white"/>
+<g font-family="DejaVu Sans, sans-serif">
+<text x="80" y="115" font-size="32" fill="#b94d50">Muster Heiztechnik GmbH</text>
+<text x="80" y="150" font-size="18" fill="#b94d50">Musterweg 12 · 12345 Beispielstadt</text>
+<text x="80" y="300" font-size="25">Beispielkunde</text>
+<text x="80" y="335" font-size="25">Kundenweg 5</text>
+<text x="80" y="370" font-size="25">12345 Beispielstadt</text>
+<text x="80" y="500" font-size="35" font-weight="bold">Rechnung</text>
+<text x="80" y="570" font-size="25">Rechnungs-Nr.:</text><text x="500" y="570" font-size="25">RG2026/082</text>
+<text x="80" y="615" font-size="25">Kunden-Nr.:</text><text x="500" y="615" font-size="25">13757</text>
+<text x="80" y="800" font-size="25">Reparatur</text><text x="900" y="800" font-size="25">149,98 EUR</text>
+<text x="80" y="970" font-size="27" font-weight="bold">Endbetrag:</text><text x="900" y="970" font-size="27" font-weight="bold">149,98 EUR</text>
+<text x="80" y="1250" font-size="25" fill="#2458a0">Kontoinhaber: Muster Heiztechnik GmbH</text>
+<text x="80" y="1295" font-size="25">IBAN: DE89 3704 0044 0532 0130 00</text>
+</g></svg>
