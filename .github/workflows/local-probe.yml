@@ -1,0 +1,17 @@
+name: Lokales PDF-Prüfwerkzeug
+on:
+  push:
+    branches: [test/lokale-pdf-pruefung]
+permissions:
+  contents: read
+jobs:
+  build-probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libpoppler-glib-dev libcairo2-dev libtesseract-dev
+      - run: cargo build --release --bin giro-local-probe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: giro-local-probe-linux
+          path: target/release/giro-local-probe
