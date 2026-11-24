@@ -36,6 +36,15 @@ void PlasmaWorkflow::openEditAndGenerate()
 
     Window window;
     window.show();
+    auto *help = window.findChild<QMenu *>("helpMenu");
+    auto *instructions = window.findChild<QAction *>("helpInstructions");
+    auto *report = window.findChild<QAction *>("reportProblem");
+    auto *about = window.findChild<QAction *>("aboutProgram");
+    QVERIFY(help && instructions && report && about);
+    QVERIFY(help->actions().contains(instructions));
+    QVERIFY(help->actions().contains(report));
+    QVERIFY(help->actions().contains(about));
+    QCOMPARE(instructions->shortcut(), QKeySequence(QKeySequence::HelpContents));
     QMimeData mime;
     mime.setUrls({QUrl::fromLocalFile(path)});
     QDragEnterEvent drag(QPoint(40, 100), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);

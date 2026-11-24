@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDragEnterEvent>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
@@ -18,6 +19,7 @@
 #include <QLineEdit>
 #include <QMainWindow>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
 #include <QScrollArea>
@@ -61,6 +63,31 @@ public:
 
         auto *file = menuBar()->addMenu(tr("&Datei"));
         auto *view = menuBar()->addMenu(tr("&Ansicht"));
+        auto *help = menuBar()->addMenu(tr("&Hilfe"));
+        help->setObjectName(QStringLiteral("helpMenu"));
+        auto *instructions = help->addAction(QIcon::fromTheme("help-contents"), tr("&Hilfe zum Programm"),
+                                             QKeySequence::HelpContents, this, [this] {
+            QMessageBox::information(this, tr("Hilfe zum Programm"),
+                tr("1. Öffne eine PDF-Rechnung oder ein Foto.\n"
+                   "2. Vergleiche die erkannten Zahlungsdaten mit der Rechnung und korrigiere sie bei Bedarf.\n"
+                   "3. Erstelle den GiroCode und scanne ihn mit deiner Banking-App.\n\n"
+                   "Bei einem Scan oder einer fehlerhaften Textebene kannst du unter Datei den PDF-Text per OCR neu erkennen."));
+        });
+        instructions->setObjectName(QStringLiteral("helpInstructions"));
+        auto *report = help->addAction(QIcon::fromTheme("tools-report-bug"), tr("&Probleme melden …"), this, [this] {
+            const QUrl url(QStringLiteral("https://github.com/markusdauner1974-droid/SEPA-GiroCode-Generator/issues"));
+            if (!QDesktopServices::openUrl(url))
+                QMessageBox::warning(this, tr("Browser konnte nicht geöffnet werden"),
+                    tr("Bitte öffne diese Adresse im Browser:\n%1").arg(url.toString()));
+        });
+        report->setObjectName(QStringLiteral("reportProblem"));
+        help->addSeparator();
+        auto *about = help->addAction(QIcon::fromTheme("help-about"), tr("&Über SEPA-GiroCode-Generator"), this, [this] {
+            QMessageBox::about(this, tr("Über SEPA-GiroCode-Generator"),
+                tr("SEPA-GiroCode-Generator\n\nErstellt GiroCodes aus Rechnungen.\n\n"
+                   "Ein Open-Source-Projekt unter der GNU GPL Version 3."));
+        });
+        about->setObjectName(QStringLiteral("aboutProgram"));
         auto *toolbar = addToolBar(tr("Rechnung"));
         toolbar->setObjectName("invoiceTools");
         toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
