@@ -37,7 +37,13 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/time -o test-output/docling-pdf-zeit.txt -f '%e s' /tmp/docling-rs --text-layer-only --to json test-output/digital.pdf > test-output/docling-pdf.json
-          /usr/bin/time -o test-output/docling-scan-zeit.txt -f '%e s' /tmp/docling-rs --ocr-engine ppocr --ocr-lang de --no-table-former --to json test-output/scan.png > test-output/docling-scan.json
+          # v2.86.14 only accepts en/ch as language codes, but documents that
+          # the multilingual PP-OCRv6 model is preferred when present.
+          test -f .models/ocr_rec_v6.onnx
+          test -f .models/ocr_rec_v6_dict.txt
+          export DOCLING_OCR_REC_ONNX="$PWD/.models/ocr_rec_v6.onnx"
+          export DOCLING_OCR_DICT="$PWD/.models/ocr_rec_v6_dict.txt"
+          /usr/bin/time -o test-output/docling-scan-zeit.txt -f '%e s' /tmp/docling-rs --ocr-engine ppocr --ocr-lang en --no-table-former --to json test-output/scan.png > test-output/docling-scan.json
           /usr/bin/time -o test-output/tesseract-zeit.txt -f '%e s' tesseract test-output/scan.png test-output/tesseract -l deu+eng tsv
           jq -e . test-output/docling-pdf.json >/dev/null
           jq -e . test-output/docling-scan.json >/dev/null
