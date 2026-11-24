@@ -11,7 +11,46 @@ class PlasmaWorkflow : public QObject {
     Q_OBJECT
 private slots:
     void openEditAndGenerate();
+    void dropInvoiceOnPreviewAndField();
 };
+
+void PlasmaWorkflow::dropInvoiceOnPreviewAndField()
+{
+    QTemporaryDir temp;
+    QVERIFY(temp.isValid());
+    auto makePdf = [&](const QString &name, const QString &amount) {
+        const QString path = temp.filePath(name);
+        QPdfWriter pdf(path);
+        pdf.setResolution(72);
+        QPainter painter(&pdf);
+        painter.drawText(30, 42, "Empfänger: Beispiel GmbH");
+        painter.drawText(30, 65, "IBAN: DE89 3704 0044 0532 0130 00");
+        painter.drawText(30, 88, "Zahlbetrag: " + amount);
+        painter.end();
+        return path;
+    };
+    const auto first = makePdf("eins.pdf", "12,34");
+    const auto second = makePdf("zwei.pdf", "56,78");
+    Window window;
+    window.show();
+    auto *preview = window.findChild<QGraphicsView *>();
+    auto *amount = window.findChild<QLineEdit *>("paymentField3");
+    QVERIFY(preview && amount);
+    auto dropFile = [](QWidget *target, const QString &path) {
+        QMimeData mime;
+        mime.setUrls({QUrl::fromLocalFile(path)});
+        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(target, &enter);
+        if (!enter.isAccepted()) return false;
+        QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(target, &drop);
+        return drop.isAccepted();
+    };
+    QVERIFY(dropFile(preview->viewport(), first));
+    QTRY_COMPARE(amount->text(), QString("12,34"));
+    QVERIFY(dropFile(amount, second));
+    QTRY_COMPARE(amount->text(), QString("56,78"));
+}
 
 void PlasmaWorkflow::openEditAndGenerate()
 {

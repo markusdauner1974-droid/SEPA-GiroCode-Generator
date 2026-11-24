@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFile>
@@ -120,6 +121,7 @@ public:
         auto *splitter = new QSplitter;
         splitter->setChildrenCollapsible(false);
         preview = new Preview;
+        preview->viewport()->setAcceptDrops(true);
         splitter->addWidget(preview);
         auto *scroll = new QScrollArea;
         scroll->setWidgetResizable(true);
@@ -189,6 +191,7 @@ public:
             splitter->restoreState(settings.value("splitter").toByteArray());
 
         connect(&watcher, &QFutureWatcher<Document>::finished, this, &Window::loaded);
+        qApp->installEventFilter(this);
         refreshControls();
     }
 
@@ -219,6 +222,30 @@ public:
     }
 
 protected:
+    // Child widgets such as the preview viewport and line edits may accept
+    // drops themselves. Intercept invoice files before they consume the event,
+    // while leaving ordinary text drags and other windows untouched.
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        auto *widget = qobject_cast<QWidget *>(object);
+        if (widget && (widget == this || isAncestorOf(widget)) && widget->window() == this &&
+            (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove || event->type() == QEvent::Drop)) {
+            auto *drop = static_cast<QDropEvent *>(event);
+            const auto urls = drop->mimeData()->urls();
+            if (urls.size() == 1 && supported(urls.front())) {
+                if (watcher.isRunning()) {
+                    drop->ignore();
+                    return true;
+                }
+                drop->acceptProposedAction();
+                if (event->type() == QEvent::Drop)
+                    openFile(urls.front().toLocalFile());
+                return true;
+            }
+        }
+        return QMainWindow::eventFilter(object, event);
+    }
+
     void dragEnterEvent(QDragEnterEvent *event) override
     {
         const auto urls = event->mimeData()->urls();
