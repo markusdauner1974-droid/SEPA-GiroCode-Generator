@@ -243,10 +243,30 @@ pub fn extract(text: &str) -> (Payment, Vec<String>) {
         r"(?i)^(?:Verwendungszweck|Zahlungsgrund|Zahlungsreferenz|Bei Zahlung angeben|Überweisungstext|Payment reference|Referenz bei Überweisung|Kassenzeichen)\s*:\s*(.*)$")
         .into_iter().filter(|value| !value.is_empty() && value.chars().count() <= 140)
         .map(str::to_owned).collect();
-    let invoice_number = invoice_identifier(&rows,
+    let standard_invoice = invoice_identifier(&rows,
         r"(?i)^(?:Rechnungsnummer|(?:Rechnungs|Rechnung|Rechn|Rech|Rg|Inv)\.?[ \t-]*Nr\.?)(?:[ \t:#]+|$)(.*)$");
-    let customer_number = invoice_identifier(&rows,
+    // Some invoices use "Rechnung: NUMBER vom DATE" rather than "Rechnungs-Nr.".
+    // Require the date cue and validate the number, so a heading or a date
+    // alone is not mistaken for a payment reference.
+    let dated_invoice = rx(r"(?im)^\s*Rechnung\s*:\s*([\p{L}0-9][\p{L}0-9./-]{0,39})\s+vom\s+\d{1,2}\.\d{1,2}\.\d{2,4}\b");
+    let valid_id = rx(r"^[\p{L}0-9][\p{L}0-9./-]{0,39}$");
+    let date_id = rx(r"^\d{1,2}\.\d{1,2}\.\d{2,4}$");
+    let mut invoice_candidates: BTreeSet<String> = dated_invoice.captures_iter(text)
+        .map(|c| c[1].to_owned())
+        .filter(|id| valid_id.is_match(id) && !date_id.is_match(id) && id.bytes().any(|c| c.is_ascii_digit()))
+        .collect();
+    if !standard_invoice.is_empty() { invoice_candidates.insert(standard_invoice); }
+    let invoice_number = unique(invoice_candidates);
+    let standard_customer = invoice_identifier(&rows,
         r"(?i)^(?:Kundennummer|(?:Kunden|Kunde|Kund|Knd|Kd)\.?[ \t-]*Nr\.?)(?:[ \t:#]+|$)(.*)$");
+    // Kunde and Debitor can be different identifiers. Only use the value if
+    // the document explicitly repeats the same identifier for both.
+    let paired_customer = rx(r"(?im)^\s*Kunde\s*/\s*Debitor\s*:\s*([\p{L}0-9][\p{L}0-9.-]{0,39})\s*/\s*([\p{L}0-9][\p{L}0-9.-]{0,39})(?:\s|$)");
+    let mut customer_candidates: BTreeSet<String> = paired_customer.captures_iter(text)
+        .filter(|c| c[1] == c[2] && c[1].bytes().any(|x| x.is_ascii_digit()))
+        .map(|c| c[1].to_owned()).collect();
+    if !standard_customer.is_empty() { customer_candidates.insert(standard_customer); }
+    let customer_number = unique(customer_candidates);
     let purpose = if purposes.is_empty() && !invoice_number.is_empty() {
         format!("Rechnung {invoice_number}")
     } else { unique(purposes) };
@@ -354,6 +374,20 @@ mod tests {
         let (unrelated, _) = extract("Kundenauftrag: 4081\nRechnungsdatum: 04.07.2026");
         assert!(unrelated.invoice_number.is_empty());
         assert!(unrelated.customer_number.is_empty());
+    }
+
+    #[test]
+    fn recognizes_dated_invoice_and_matching_customer_debtor() {
+        let text = "Rechnung : 456789 vom 15.03.2025      Kunden-Berater : Test\nKunde /Debitor : 98765 / 98765      Kennzeichen: TEST";
+        let (p, _) = extract(text);
+        assert_eq!(p.invoice_number, "456789");
+        assert_eq!(p.customer_number, "98765");
+        assert_eq!(p.purpose, "Rechnung 456789");
+        let (p, _) = extract("Rechnung: 15.03.2025 vom 15.03.2025\nKunde / Debitor: 98765 / 12345");
+        assert!(p.invoice_number.is_empty());
+        assert!(p.customer_number.is_empty());
+        let (p, _) = extract("Rechnungs-Nr.: A123\nRechnung: B456 vom 15.03.2025");
+        assert!(p.invoice_number.is_empty());
     }
 
     #[test]
