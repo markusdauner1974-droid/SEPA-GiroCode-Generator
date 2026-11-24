@@ -14,7 +14,7 @@ jobs:
       - name: Testwerkzeuge installieren
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin poppler-utils tesseract-ocr-deu jq
+          sudo apt-get install -y poppler-utils tesseract-ocr-deu jq img2pdf
       - name: Docling.rs und Modelle vorbereiten
         run: |
           set -euo pipefail
@@ -30,8 +30,9 @@ jobs:
       - name: Anonyme digitale Rechnung und Scan erstellen
         run: |
           mkdir -p test-output
-          rsvg-convert -f pdf -o test-output/digital.pdf tests/docling-comparison/rechnung.svg
-          rsvg-convert -f png -o test-output/scan.png tests/docling-comparison/rechnung.svg
+          cp tests/docling-comparison/blau-digital.pdf test-output/digital.pdf
+          cp tests/docling-comparison/blau-scan.png test-output/scan.png
+          img2pdf test-output/scan.png -o test-output/scan.pdf
           pdftotext test-output/digital.pdf test-output/poppler.txt
       - name: Digitale PDF und Scan erkennen
         run: |
@@ -44,26 +45,34 @@ jobs:
           export DOCLING_OCR_REC_ONNX="$PWD/.models/ocr_rec_v6.onnx"
           export DOCLING_OCR_DICT="$PWD/.models/ocr_rec_v6_dict.txt"
           /usr/bin/time -o test-output/docling-scan-zeit.txt -f '%e s' /tmp/docling-rs --ocr-engine ppocr --ocr-lang en --no-table-former --to json test-output/scan.png > test-output/docling-scan.json
+          /usr/bin/time -o test-output/docling-scanpdf-zeit.txt -f '%e s' /tmp/docling-rs --ocr-engine ppocr --ocr-lang en --no-table-former --force-full-page-ocr --to json test-output/scan.pdf > test-output/docling-scanpdf.json
           /usr/bin/time -o test-output/tesseract-zeit.txt -f '%e s' tesseract test-output/scan.png test-output/tesseract -l deu+eng tsv
           jq -e . test-output/docling-pdf.json >/dev/null
           jq -e . test-output/docling-scan.json >/dev/null
-          grep -q 'RG2026/082' test-output/poppler.txt
-          grep -q 'RG2026/082' test-output/docling-pdf.json
-          grep -q '149,98' test-output/docling-pdf.json
+          grep -q 'RG-2026-104' test-output/poppler.txt
+          grep -q 'RG-2026-104' test-output/docling-pdf.json
+          grep -q '297,50' test-output/docling-pdf.json
           jq -r '.. | strings' test-output/docling-pdf.json > test-output/docling-pdf.txt
           jq -r '.. | strings' test-output/docling-scan.json > test-output/docling-scan.txt
+          jq -r '.. | strings' test-output/docling-scanpdf.json > test-output/docling-scanpdf.txt
           cut -f 12 test-output/tesseract.tsv > test-output/tesseract.txt
-          for source in poppler docling-pdf docling-scan tesseract; do
+          for source in poppler docling-pdf docling-scan docling-scanpdf tesseract; do
             printf '\n%s\n' "$source" >> test-output/vergleich.txt
-            for term in 'Muster Heiztechnik' 'RG2026/082' '13757' '149,98' 'DE89'; do
+            for term in 'Muster Heiztechnik' 'RG-2026-104' 'KD-4721' '297,50' 'DE89'; do
               if tr '\n' ' ' < "test-output/$source.txt" | grep -Fqi "$term"; then
                 printf '  %s: gefunden\n' "$term" >> test-output/vergleich.txt
               else
                 printf '  %s: nicht gefunden\n' "$term" >> test-output/vergleich.txt
               fi
             done
+            if tr -d '[:space:]' < "test-output/$source.txt" | grep -Fqi 'DE89370400440532013000'; then
+              echo '  IBAN vollständig: gefunden' >> test-output/vergleich.txt
+            else
+              echo '  IBAN vollständig: nicht gefunden' >> test-output/vergleich.txt
+            fi
           done
           cat test-output/vergleich.txt
+          for f in test-output/*zeit.txt; do printf '%s: ' "$f"; cat "$f"; done
       - name: Ergebnisse bereitstellen
         if: always()
         uses: actions/upload-artifact@v4
