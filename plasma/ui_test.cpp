@@ -95,10 +95,22 @@ void PlasmaWorkflow::openEditAndGenerate()
 
     auto *amount = window.findChild<QLineEdit *>("paymentField3");
     auto *purpose = window.findChild<QLineEdit *>("paymentField4");
+    auto *iban = window.findChild<QLineEdit *>("paymentField1");
     auto *generate = window.findChild<QPushButton *>("generateCode");
     auto *qr = window.findChild<QLabel *>("giroCodeImage");
-    QVERIFY(amount && purpose && generate && qr);
+    QVERIFY(amount && iban && purpose && generate && qr);
     QTRY_COMPARE(amount->text(), QString("24,90"));
+    QCOMPARE(iban->text(), QString("DE89 3704 0044 0532 0130 00"));
+    QCOMPARE(displayIban("FR1420041010050500013M02606"), QString("FR14 2004 1010 0505 0001 3M02 606"));
+    const auto codeFor = [](const QString &value) {
+        const QJsonArray fields{QStringLiteral("Beispiel GmbH"), value, QString(),
+                                QStringLiteral("24,90"), QStringLiteral("Rechnung TEST-17")};
+        const QByteArray data = QJsonDocument(fields).toJson(QJsonDocument::Compact);
+        return takeBytes(giro_code(data.data(), data.size()));
+    };
+    const QByteArray grouped = codeFor(iban->text());
+    QVERIFY(!QImage::fromData(grouped).isNull());
+    QCOMPARE(grouped, codeFor("DE89370400440532013000"));
     amount->setFocus();
     QTest::keyClick(amount, Qt::Key_Tab);
     QCOMPARE(QApplication::focusWidget(), purpose);

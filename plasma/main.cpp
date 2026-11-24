@@ -52,6 +52,18 @@ bool supported(const QUrl &url)
     const QString extension = QFileInfo(url.toLocalFile()).suffix().toLower();
     return extension == "pdf" || extension == "png" || extension == "jpeg" || extension == "jpg";
 }
+
+QString displayIban(const QString &value)
+{
+    QString result;
+    for (const QChar ch : value) {
+        if (ch.isSpace()) continue;
+        const qsizetype digits = result.size() - result.count(QLatin1Char(' '));
+        if (digits > 0 && digits % 4 == 0) result.append(QLatin1Char(' '));
+        result.append(ch);
+    }
+    return result;
+}
 }
 
 class Window : public QMainWindow {
@@ -289,7 +301,8 @@ private:
         count = details["pages"].toInt();
         const auto values = details["fields"].toArray();
         for (std::size_t i = 0; i < fields.size(); ++i) {
-            fields[i]->setText(values[qsizetype(i)].toString());
+            const QString value = values[qsizetype(i)].toString();
+            fields[i]->setText(i == 1 ? displayIban(value) : value);
             if ((i == 0 || i == 1 || i == 3) && fields[i]->text().isEmpty()) {
                 hints[i]->setText(tr("Bitte aus der Rechnung übernehmen."));
                 hints[i]->show();
@@ -316,7 +329,7 @@ private:
         if (accounts.size() > 1) {
             ibanChoices->setPlaceholderText(tr("Gefundene IBAN auswählen"));
             for (const auto &account : accounts)
-                ibanChoices->addItem(account.toString());
+                ibanChoices->addItem(displayIban(account.toString()));
             ibanChoices->setCurrentIndex(-1);
             ibanChoices->show();
         }
