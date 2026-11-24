@@ -178,6 +178,22 @@ mod library_tests {
     use super::*;
 
     #[test]
+    #[ignore = "Manueller Vergleich mit anonymisiertem OCR-Testbild"]
+    fn end_to_end_ocr_ergebnis() {
+        let path = std::env::var("GIRO_TEST_IMAGE").expect("GIRO_TEST_IMAGE fehlt");
+        let (_, text) = load(Path::new(&path), false).expect("Rechnung konnte nicht gelesen werden");
+        let (payment, _) = crate::payment::extract(&text);
+        println!("ERKANNTER TEXT:\n{text}");
+        println!("FELDER: Empfänger={:?}; IBAN={:?}; Betrag={:?}; Rechnungsnummer={:?}; Kundennummer={:?}; Zweck={:?}",
+            payment.name, payment.iban, payment.amount, payment.invoice_number, payment.customer_number, payment.purpose);
+        assert_eq!(payment.name, "Jürgen Möller Heiztechnik-Solaranlagen");
+        assert_eq!(payment.iban, "DE89370400440532013000");
+        assert_eq!(payment.amount, "297,50");
+        assert_eq!(payment.invoice_number, "RG2026/082");
+        assert_eq!(payment.customer_number, "13757");
+    }
+
+    #[test]
     fn poppler_reads_pdf_text_and_positions() {
         let surface = cairo::PdfSurface::for_stream(600., 400., Vec::new()).unwrap();
         let cr = cairo::Context::new(&surface).unwrap();

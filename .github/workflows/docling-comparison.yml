@@ -14,7 +14,7 @@ jobs:
       - name: Testwerkzeuge installieren
         run: |
           sudo apt-get update
-          sudo apt-get install -y poppler-utils tesseract-ocr-deu jq img2pdf
+          sudo apt-get install -y poppler-utils libpoppler-glib-dev libtesseract-dev tesseract-ocr-deu jq img2pdf
       - name: Docling.rs und Modelle vorbereiten
         run: |
           set -euo pipefail
@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p test-output
           cp tests/docling-comparison/blau-digital.pdf test-output/digital.pdf
-          cp tests/docling-comparison/blau-scan.png test-output/scan.png
+          cp tests/docling-comparison/scan-rot-erschwert.png test-output/scan.png
           img2pdf test-output/scan.png -o test-output/scan.pdf
           pdftotext test-output/digital.pdf test-output/poppler.txt
       - name: Digitale PDF und Scan erkennen
@@ -56,9 +56,9 @@ jobs:
           jq -r '.. | strings' test-output/docling-scan.json > test-output/docling-scan.txt
           jq -r '.. | strings' test-output/docling-scanpdf.json > test-output/docling-scanpdf.txt
           cut -f 12 test-output/tesseract.tsv > test-output/tesseract.txt
-          for source in poppler docling-pdf docling-scan docling-scanpdf tesseract; do
+          for source in docling-scan docling-scanpdf tesseract; do
             printf '\n%s\n' "$source" >> test-output/vergleich.txt
-            for term in 'Muster Heiztechnik' 'RG-2026-104' 'KD-4721' '297,50' 'DE89'; do
+            for term in 'Jürgen Möller Heiztechnik-Solaranlagen' 'RG2026/082' '13757' '297,50' 'DE89'; do
               if tr '\n' ' ' < "test-output/$source.txt" | grep -Fqi "$term"; then
                 printf '  %s: gefunden\n' "$term" >> test-output/vergleich.txt
               else
@@ -73,6 +73,12 @@ jobs:
           done
           cat test-output/vergleich.txt
           for f in test-output/*zeit.txt; do printf '%s: ' "$f"; cat "$f"; done
+      - name: Tatsächliche GiroCode-Feldzuordnung testen
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          export GIRO_TEST_IMAGE="$PWD/test-output/scan.png"
+          cargo test --lib end_to_end_ocr_ergebnis -- --ignored --nocapture 2>&1 | tee test-output/girocode-felder.txt
       - name: Ergebnisse bereitstellen
         if: always()
         uses: actions/upload-artifact@v4
