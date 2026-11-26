@@ -155,6 +155,40 @@ public:
             }
             if (native.isEmpty()) native = tr("Keine mitgelieferten Lizenzdateien gefunden.");
             addTab(tr("Mitgelieferte Lizenztexte"), native);
+            // The KDE runtime is installed separately. Inspect only its own
+            // manifest and licence directory; do not claim a complete SBOM.
+            auto *runtime = new QPlainTextEdit(&dialog);
+            runtime->setReadOnly(true);
+            tabs->addTab(runtime, tr("KDE-Laufzeit"));
+            connect(tabs, &QTabWidget::currentChanged, &dialog, [runtime, tabs, readFile](int index) {
+                if (tabs->widget(index) != runtime || runtime->property("loaded").toBool()) return;
+                runtime->setProperty("loaded", true);
+                QString text = QObject::tr("Die KDE-Flatpak-Laufzeit wird separat bereitgestellt. Die folgenden Daten stammen aus ihrer installierten Manifest- und Lizenzsammlung; Umfang und Aktualität hängen von der Laufzeit ab.\n\n");
+                const QString manifest = QStringLiteral("/usr/manifest.json");
+                text += QObject::tr("=== Laufzeitmanifest ===\n\n") + readFile(manifest);
+                const QString runtimeLicenses = QStringLiteral("/usr/share/licenses/org.kde.Platform");
+                if (!QDir(runtimeLicenses).exists()) {
+                    text += QObject::tr("\n\nKein KDE-Lizenzverzeichnis unter %1 gefunden.\n").arg(runtimeLicenses);
+                } else {
+                    QDirIterator it(runtimeLicenses, QDir::Files | QDir::Readable, QDirIterator::Subdirectories);
+                    qsizetype total = 0;
+                    int files = 0;
+                    constexpr qsizetype maxBytes = 12 * 1024 * 1024;
+                    while (it.hasNext()) {
+                        const QString path = it.next();
+                        if (QFileInfo(path).size() > 1024 * 1024 || total >= maxBytes) {
+                            text += QObject::tr("\nEinige Laufzeitdateien wurden aus Größen- oder Platzgründen nicht angezeigt. Pfad: %1\n").arg(runtimeLicenses);
+                            break;
+                        }
+                        const QString content = readFile(path);
+                        total += content.size() * qsizetype(sizeof(QChar));
+                        text += QStringLiteral("\n\n=== %1 ===\n\n").arg(QDir(runtimeLicenses).relativeFilePath(path)) + content;
+                        ++files;
+                    }
+                    if (files == 0) text += QObject::tr("\nKeine lesbaren Lizenzdateien im KDE-Laufzeitverzeichnis gefunden.\n");
+                }
+                runtime->setPlainText(text);
+            });
             layout->addWidget(tabs);
             auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
             connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
