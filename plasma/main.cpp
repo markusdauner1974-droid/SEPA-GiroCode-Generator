@@ -112,11 +112,8 @@ public:
         auto *about = help->addAction(QIcon::fromTheme("help-about"), tr("&Über SEPA-GiroCode-Generator"), this, [this] {
             QMessageBox::about(this, tr("Über SEPA-GiroCode-Generator"),
                 tr("SEPA-GiroCode-Generator\n\nErstellt GiroCodes aus Rechnungen.\n\n"
-                   "Lizenz: GNU General Public License, Version 3.0 (GPL-3.0-only).\
-\
-"
-                   "Idee und Konzept: Markus Dauner\
-"
+                   "Lizenz: GNU General Public License, Version 3.0 (GPL-3.0-only).\n\n"
+                   "Idee und Konzept: Markus Dauner\n"
                    "Programmierung: mit Unterstützung von OpenAI ChatGPT."));
         });
         about->setObjectName(QStringLiteral("aboutProgram"));
