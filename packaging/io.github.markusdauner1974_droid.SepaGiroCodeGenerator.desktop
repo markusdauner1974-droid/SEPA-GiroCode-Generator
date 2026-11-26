@@ -3,6 +3,7 @@ Type=Application
 Name=SEPA-GiroCode-Generator
 Comment=GiroCodes aus Rechnungen erstellen
 Exec=rechnung-zu-girocode %f
+Icon=io.github.markusdauner1974_droid.SepaGiroCodeGenerator
 MimeType=application/pdf;image/jpeg;image/png;
 Terminal=false
 Categories=Office;Finance;

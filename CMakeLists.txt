@@ -33,6 +33,10 @@ target_link_options(rechnung-zu-girocode PRIVATE "LINKER:--gc-sections")
 target_link_libraries(rechnung-zu-girocode PRIVATE Qt6::Widgets Qt6::Concurrent
     "${RUST_LIBRARY}" PkgConfig::PDF "${TESSERACT_LIBRARY}" Threads::Threads ${CMAKE_DL_LIBS})
 install(TARGETS rechnung-zu-girocode RUNTIME DESTINATION bin)
+install(FILES packaging/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.svg
+    DESTINATION share/icons/hicolor/scalable/apps)
+install(FILES packaging/DejaVu-font-license.txt
+    DESTINATION share/licenses/sepa-girocode-generator)
 
 include(CTest)
 set(CMAKE_AUTOMOC ON)

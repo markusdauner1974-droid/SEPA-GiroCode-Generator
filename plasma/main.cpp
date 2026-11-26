@@ -94,6 +94,20 @@ public:
                     tr("Bitte öffne diese Adresse im Browser:\n%1").arg(url.toString()));
         });
         report->setObjectName(QStringLiteral("reportProblem"));
+        auto *projectQr = help->addAction(QIcon::fromTheme("view-barcode-qr"), tr("Projektseite als QR-Code"), this, [this] {
+            const QPixmap code = QIcon::fromTheme(appId).pixmap(384, 384);
+            if (code.isNull()) {
+                QMessageBox::warning(this, tr("QR-Code nicht verfügbar"),
+                    tr("Die Projektseite kann unter https://github.com/markusdauner1974-droid/SEPA-GiroCode-Generator geöffnet werden."));
+                return;
+            }
+            QMessageBox box(this);
+            box.setWindowTitle(tr("Projektseite auf GitHub"));
+            box.setText(tr("Scanne den QR-Code, um die Projektseite zu öffnen."));
+            box.setIconPixmap(code);
+            box.exec();
+        });
+        projectQr->setObjectName(QStringLiteral("projectQr"));
         help->addSeparator();
         auto *about = help->addAction(QIcon::fromTheme("help-about"), tr("&Über SEPA-GiroCode-Generator"), this, [this] {
             QMessageBox::about(this, tr("Über SEPA-GiroCode-Generator"),
@@ -418,6 +432,7 @@ int main(int argc, char **argv)
     app.setOrganizationName("SEPA-GiroCode");
     app.setApplicationName(appName);
     app.setDesktopFileName(appId);
+    app.setWindowIcon(QIcon::fromTheme(appId));
     Window window;
     window.show();
     if (app.arguments().size() == 2)
