@@ -79,10 +79,12 @@ void PlasmaWorkflow::openEditAndGenerate()
     auto *instructions = window.findChild<QAction *>("helpInstructions");
     auto *report = window.findChild<QAction *>("reportProblem");
     auto *about = window.findChild<QAction *>("aboutProgram");
-    QVERIFY(help && instructions && report && about);
+    auto *licenses = window.findChild<QAction *>("openSourceLicenses");
+    QVERIFY(help && instructions && report && about && licenses);
     QVERIFY(help->actions().contains(instructions));
     QVERIFY(help->actions().contains(report));
     QVERIFY(help->actions().contains(about));
+    QVERIFY(help->actions().contains(licenses));
     QCOMPARE(instructions->shortcut(), QKeySequence(QKeySequence::HelpContents));
     QMimeData mime;
     mime.setUrls({QUrl::fromLocalFile(path)});

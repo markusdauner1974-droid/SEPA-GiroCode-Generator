@@ -21,3 +21,7 @@ ctest --test-dir build --output-on-failure
 Die Anwendung liest beschriftete Zahlungsfelder und einfache zweispaltige Briefköpfe. Soweit Angaben fehlen, können sie manuell ergänzt werden. Die IBAN-Prüfsumme bestätigt ausschließlich die formale Gültigkeit. Empfänger, Betrag und Verwendungszweck vor dem Scannen prüfen.
 
 Desktop-Praxistests unter Plasma und GNOME sowie ein Test mit einer Banking-App sind offen. Die kombinierte Anwendung wird unter der GNU GPL v3 veröffentlicht. Frühere MIT-Hinweise sind in `LICENSE-MIT` dokumentiert. Tesseract und die mitgelieferten Sprachmodelle stehen unter Apache 2.0.
+
+## Lizenzen und Drittanbieter
+
+Unter **Hilfe → Open-Source-Lizenzen** stehen eine Übersicht und die im Anwendungspaket mitgelieferten Lizenztexte. Beim Bau wird aus `cargo metadata` ein Verzeichnis der aufgelösten Rust-Pakete mit Lizenzangaben und vorhandenen Lizenzdateien erzeugt. Es kann Bau- und optionale Abhängigkeiten enthalten; fehlende Lizenztexte werden ausdrücklich gekennzeichnet. Die separat installierte KDE-Flatpak-Laufzeit hat eigene Lizenz- und Drittanbieterhinweise und ist in diesem Verzeichnis nicht vollständig inventarisiert. Die Übersicht ersetzt keine Prüfung der Lizenzbedingungen einer konkreten Veröffentlichung.

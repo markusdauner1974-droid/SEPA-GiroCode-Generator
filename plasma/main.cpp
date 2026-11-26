@@ -6,6 +6,10 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QDirIterator>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
@@ -23,6 +27,8 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
+#include <QPlainTextEdit>
+#include <QTabWidget>
 #include <QScrollArea>
 #include <QSettings>
 #include <QSplitter>
@@ -108,6 +114,54 @@ public:
             box.exec();
         });
         projectQr->setObjectName(QStringLiteral("projectQr"));
+        auto *licenses = help->addAction(QIcon::fromTheme("text-x-generic"), tr("Open-Source-Lizenzen"), this, [this] {
+            const QString root = QCoreApplication::applicationDirPath() + QStringLiteral("/../share/licenses");
+            auto readFile = [](const QString &path) {
+                QFile file(path);
+                if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+                    return QObject::tr("Datei nicht verfügbar: %1").arg(path);
+                return QString::fromUtf8(file.readAll());
+            };
+            QDialog dialog(this);
+            dialog.setWindowTitle(tr("Open-Source-Lizenzen"));
+            dialog.resize(850, 650);
+            auto *layout = new QVBoxLayout(&dialog);
+            auto *tabs = new QTabWidget(&dialog);
+            auto addTab = [&](const QString &title, const QString &text) {
+                auto *view = new QPlainTextEdit(&dialog);
+                view->setReadOnly(true);
+                view->setPlainText(text);
+                tabs->addTab(view, title);
+            };
+            const QString appDir = root + QStringLiteral("/sepa-girocode-generator/");
+            addTab(tr("Übersicht"), readFile(appDir + QStringLiteral("THIRD-PARTY-NOTICES.txt")));
+            addTab(tr("Rust-Abhängigkeiten"), readFile(appDir + QStringLiteral("rust-dependencies-and-licenses.txt")));
+            QString native;
+            const QStringList dirs = {QStringLiteral("poppler"), QStringLiteral("poppler-data"),
+                                      QStringLiteral("tesseract"), QStringLiteral("tessdata_fast"),
+                                      QStringLiteral("leptonica")};
+            for (const auto &dir : dirs) {
+                QDirIterator it(root + QLatin1Char('/') + dir, QDir::Files, QDirIterator::Subdirectories);
+                while (it.hasNext()) {
+                    const QString path = it.next();
+                    native += QStringLiteral("\n=== %1 ===\n\n").arg(dir + QLatin1Char('/') + QFileInfo(path).fileName());
+                    native += readFile(path);
+                    native += QLatin1Char('\n');
+                }
+            }
+            for (const auto &file : {QStringLiteral("LICENSE"), QStringLiteral("LICENSE-MIT"), QStringLiteral("DejaVu-font-license.txt")}) {
+                native += QStringLiteral("\n=== %1 ===\n\n").arg(file);
+                native += readFile(appDir + file);
+            }
+            if (native.isEmpty()) native = tr("Keine mitgelieferten Lizenzdateien gefunden.");
+            addTab(tr("Mitgelieferte Lizenztexte"), native);
+            layout->addWidget(tabs);
+            auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+            connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+            layout->addWidget(buttons);
+            dialog.exec();
+        });
+        licenses->setObjectName(QStringLiteral("openSourceLicenses"));
         help->addSeparator();
         auto *about = help->addAction(QIcon::fromTheme("help-about"), tr("&Über SEPA-GiroCode-Generator"), this, [this] {
             QMessageBox::about(this, tr("Über SEPA-GiroCode-Generator"),
