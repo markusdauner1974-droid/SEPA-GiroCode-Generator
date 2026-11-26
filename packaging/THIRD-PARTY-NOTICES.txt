@@ -1,0 +1,24 @@
+VERWENDETE OPEN-SOURCE-SOFTWARE
+
+SEPA-GiroCode-Generator
+Lizenz: GNU General Public License Version 3.0 only (GPL-3.0-only).
+Idee und Konzept: Markus Dauner.
+Programmierung: mit Unterstützung von OpenAI ChatGPT.
+Projekt und Quellcode: https://github.com/markusdauner1974-droid/SEPA-GiroCode-Generator
+Der vollständige GPL-Lizenztext liegt im mitgelieferten Ordner share/licenses/sepa-girocode-generator/LICENSE.
+
+Mit dem Flatpak ausdrücklich mitgelieferte Komponenten:
+
+Poppler 26.11.0 — PDF-Bibliothek. GNU GPL; die mitgelieferten Lizenztexte COPYING und COPYING3 enthalten GPL Version 2 und Version 3. https://poppler.freedesktop.org/
+Poppler-Data 0.4.12 — Daten für die PDF-Darstellung. Verschiedene Lizenzen, darunter Adobe-Hinweise; die zugehörigen Dateien COPYING und COPYING.adobe liegen unter share/licenses/poppler-data. https://poppler.freedesktop.org/
+Tesseract 5.5.1 — optische Texterkennung. Apache License 2.0. https://github.com/tesseract-ocr/tesseract
+Tessdata Fast 4.1.0 — deutsche und englische Sprachdaten. Apache License 2.0. https://github.com/tesseract-ocr/tessdata_fast
+Leptonica 1.85.0 — Bildverarbeitung für Tesseract. BSD 2-Clause. https://github.com/DanBloomberg/leptonica
+DejaVu Sans — Schriftumrisse im QR-Grafikzeichen. Bitstream-Vera-Lizenz; siehe DejaVu-font-license.txt. https://dejavu-fonts.github.io/
+
+Eine Liste der beim Bau aufgelösten Rust-Pakete mit ihren Lizenzangaben und den in den jeweiligen Paketen verfügbaren Lizenztexten steht in rust-dependencies-and-licenses.txt. Die Liste kann außerdem Bau- und optionale Abhängigkeiten enthalten. Bei Einträgen ohne aufgefundenen Lizenztext muss die Herkunft gesondert geprüft werden.
+
+Gesonderte Flatpak-Laufzeit:
+Die Anwendung verwendet org.kde.Platform 6.11. Darin befinden sich Qt 6 und weitere Bibliotheken, unter anderem GLib und Cairo. Sie werden durch die separate Laufzeit bereitgestellt und haben eigene Lizenzbedingungen und Drittanbieterhinweise. Qt-Module stehen je nach Modul unter verschiedenen Lizenzen, unter anderem LGPL und GPL: https://doc.qt.io/qt-6/licensing.html. GLib ist LGPL-lizenziert; Cairo ist unter LGPL/MPL verfügbar. Der Reiter KDE-Laufzeit zeigt, soweit vorhanden, das installierte Laufzeitmanifest und die Lizenzdateien. Bei fehlenden Dateien oder begrenzter Anzeige ist die Übersicht nicht vollständig; die jeweilige Laufzeit muss gesondert geprüft werden.
+
+Die Lizenzdateien der ausdrücklich mit dem Anwendungspaket mitgelieferten Komponenten befinden sich im installierten Paket unter share/licenses. Diese Übersicht ersetzt keine Prüfung der Lizenzbedingungen und weiterer Hinweise der jeweiligen Komponenten.

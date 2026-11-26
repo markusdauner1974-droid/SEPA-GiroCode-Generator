@@ -1,4 +1,6 @@
-use eframe::egui::{self, pos2, Pos2, Rect};
+use emath::{pos2, Rect};
+#[cfg(feature = "legacy-ui")]
+use eframe::egui::{self, Pos2};
 
 pub struct Word {
     pub bounds: Rect,
@@ -28,19 +30,25 @@ pub fn words(tsv: &str) -> Vec<Word> {
     result
 }
 
+pub fn selected_text(words: &[Word], area: Rect) -> String {
+    let mut text = String::new();
+    let mut line = None;
+    for w in words.iter().filter(|w| area.intersects(w.bounds)) {
+        if !text.is_empty() { text.push(if line == Some(&w.line) {' '} else {'\n'}); }
+        text.push_str(&w.text);
+        line = Some(&w.line);
+    }
+    text
+}
+
+#[cfg(feature = "legacy-ui")]
 #[derive(Default)]
 pub struct Selection { anchor: Option<Pos2>, area: Option<Rect> }
 
+#[cfg(feature = "legacy-ui")]
 impl Selection {
     pub fn text(&self, words: &[Word]) -> String {
-        let mut text = String::new();
-        let mut line = None;
-        for w in words.iter().filter(|w| self.area.is_some_and(|a| a.intersects(w.bounds))) {
-            if !text.is_empty() { text.push(if line == Some(&w.line) {' '} else {'\n'}); }
-            text.push_str(&w.text);
-            line = Some(&w.line);
-        }
-        text
+        self.area.map_or_else(String::new, |area| selected_text(words, area))
     }
 
     pub fn interact(&mut self, ui: &mut egui::Ui, response: &egui::Response, words: &[Word]) {
@@ -77,7 +85,7 @@ mod tests {
     fn copies_words_in_selected_column_and_preserves_lines() {
         let data = "header\n1\t1\t0\t0\t0\t0\t0\t0\t200\t200\t-1\tpage\n5\t1\t1\t1\t1\t1\t10\t10\t30\t12\t98\tAndere\n5\t1\t1\t2\t1\t1\t90\t10\t45\t12\t98\tMüller\n5\t1\t1\t2\t2\t1\t90\t30\t45\t12\t98\tGmbH";
         let words = words(data);
-        let s = Selection {anchor:None,area:Some(Rect::from_two_pos(pos2(0.8,0.22),pos2(0.44,0.04)))};
-        assert_eq!(s.text(&words),"Müller\nGmbH");
+        let area = Rect::from_two_pos(pos2(0.8,0.22),pos2(0.44,0.04));
+        assert_eq!(selected_text(&words, area),"Müller\nGmbH");
     }
 }

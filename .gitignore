@@ -1,1 +1,7 @@
 /target/
+/build/
+/build-flatpak/
+/flatpak-repo/
+/.flatpak-builder/
+/vendor/
+/.cargo/

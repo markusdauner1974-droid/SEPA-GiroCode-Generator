@@ -1,4 +1,5 @@
 mod document;
+mod ocr;
 mod selection;
 mod payment;
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions, Vec2};
@@ -20,7 +21,7 @@ impl App {
         *self=Self {zoom:1.0,status:"Rechnung wird lokal gelesen …".into(),..Default::default()};
         let (tx,rx)=mpsc::channel(); self.pending=Some(rx);
         let ctx=ctx.clone();
-        std::thread::spawn(move || { let _=tx.send(document::load(&path)); ctx.request_repaint(); });
+        std::thread::spawn(move || { let _=tx.send(document::load(&path, false)); ctx.request_repaint(); });
     }
     fn show_page(&mut self,ctx:&egui::Context) {
         self.selection=Default::default();

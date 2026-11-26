@@ -1,0 +1,11 @@
+Dateiname ohne Endung;Empfänger;IBAN;Betrag EUR;Verwendungszweck;Rechnungsnummer;Testhinweis
+01_klassisch;Musterkontor Nord GmbH;DE09000000000000000001;49,98;REF-01-2101;TEST-01-2026;
+02_briefkopf;Fiktivwerk Studio GmbH & Co. KG;DE79000000000000000002;127,50;REF-02-2102;TEST-02-2026;
+03_zahlblock;Beispielversand Süd AG;DE52000000000000000003;314,16;REF-03-2103;TEST-03-2026;
+04_marktplatz;Musterhandel West GmbH;DE25000000000000000004;29,99;REF-04-2104;TEST-04-2026;
+05_rechte_spalte;Testatelier Faden GbR;DE95000000000000000005;1.180,75;REF-05-2105;TEST-05-2026;
+06_zweisprachig;Example Parts EU GmbH;DE68000000000000000006;75,40;REF-06-2106;TEST-06-2026;
+07_fussleiste;Übungsservice Rhein OHG;DE41000000000000000007;247,31;REF-07-2107;TEST-07-2026;
+08_abzueglich_abschlag;Probe-Energie Alpha GmbH;DE14000000000000000008;840,00;REF-08-2108;TEST-08-2026;Restbetrag nach Abschlag verwenden
+09_zwei_bankkonten;Demo Logistik Mitte KG;DE84000000000000000009;59,80;REF-09-2109;TEST-09-2026;Alte IBAN ignorieren
+10_ohne_zahlungstext;Fiktiv IT Werkstatt e.K.;DE57000000000000000010;196,45;Rechnung TEST-10-2026;TEST-10-2026;Verwendungszweck aus Rechnungsnummer ableiten
