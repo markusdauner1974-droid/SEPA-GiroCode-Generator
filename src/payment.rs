@@ -337,8 +337,8 @@ mod tests {
             "  Testkunde                   Datum:                04.07.2026\n",
             "  Kundenweg 82\n",
             "  12345 Musterstadt\n",
-            "                              Kunden-Nr.:                13757\n",
-            "                              Rechnungs-Nr.:             RG2026/082\n",
+            "                              Kunden-Nr.:                98765\n",
+            "                              Rechnungs-Nr.:             EX2025/041\n",
             "                              Bei Rückfragen bitte angeben\n",
             "                              Endbetrag                   €        2.006,05\n",
             "                              Skonto 2,00%                €        -40,12\n",
@@ -347,9 +347,9 @@ mod tests {
         let (payment, _) = extract(scan);
         assert_eq!(payment.name, "Muster Heiztechnik-Solaranlagen");
         assert!(payment.name_from_return_address);
-        assert_eq!(payment.invoice_number, "RG2026/082");
-        assert_eq!(payment.customer_number, "13757");
-        assert_eq!(payment.purpose, "Rechnung RG2026/082");
+        assert_eq!(payment.invoice_number, "EX2025/041");
+        assert_eq!(payment.customer_number, "98765");
+        assert_eq!(payment.purpose, "Rechnung EX2025/041");
         assert_eq!(payment.amount, "2.006,05");
 
         let (explicit, _) = extract(&format!("{scan}\nKontoinhaber: Anderer Kontoinhaber"));
@@ -365,11 +365,11 @@ mod tests {
             ("Rechn. Nr.", "Kund.-Nr."),
             ("Rechnungsnummer", "Knd-Nr."),
         ] {
-            let document = format!("{invoice}:                 RG2026/082\n{customer}:                 13757\nKundenauftrag: 4081");
+            let document = format!("{invoice}:                 EX2025/041\n{customer}:                 98765\nKundenauftrag: 4081");
             let (payment, _) = extract(&document);
-            assert_eq!(payment.invoice_number, "RG2026/082", "{invoice}");
-            assert_eq!(payment.customer_number, "13757", "{customer}");
-            assert_eq!(payment.purpose, "Rechnung RG2026/082");
+            assert_eq!(payment.invoice_number, "EX2025/041", "{invoice}");
+            assert_eq!(payment.customer_number, "98765", "{customer}");
+            assert_eq!(payment.purpose, "Rechnung EX2025/041");
         }
         let (unrelated, _) = extract("Kundenauftrag: 4081\nRechnungsdatum: 04.07.2026");
         assert!(unrelated.invoice_number.is_empty());
