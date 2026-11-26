@@ -34,7 +34,7 @@ target_link_libraries(rechnung-zu-girocode PRIVATE Qt6::Widgets Qt6::Concurrent
     "${RUST_LIBRARY}" PkgConfig::PDF "${TESSERACT_LIBRARY}" Threads::Threads ${CMAKE_DL_LIBS})
 install(TARGETS rechnung-zu-girocode RUNTIME DESTINATION bin)
 install(FILES packaging/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.png
-    DESTINATION share/icons/hicolor/1024x1024/apps)
+    DESTINATION share/icons/hicolor/512x512/apps)
 install(FILES packaging/io.github.markusdauner1974_droid.SepaGiroCodeGenerator.svg
     DESTINATION share/icons/hicolor/scalable/apps
     RENAME io.github.markusdauner1974_droid.SepaGiroCodeGenerator.ProjectQR.svg)
