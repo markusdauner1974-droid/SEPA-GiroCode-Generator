@@ -95,7 +95,7 @@ public:
         });
         report->setObjectName(QStringLiteral("reportProblem"));
         auto *projectQr = help->addAction(QIcon::fromTheme("view-barcode-qr"), tr("Projektseite als QR-Code"), this, [this] {
-            const QPixmap code = QIcon::fromTheme(appId).pixmap(384, 384);
+            const QPixmap code = QIcon::fromTheme(appId + QStringLiteral(".ProjectQR")).pixmap(384, 384);
             if (code.isNull()) {
                 QMessageBox::warning(this, tr("QR-Code nicht verfügbar"),
                     tr("Die Projektseite kann unter https://github.com/markusdauner1974-droid/SEPA-GiroCode-Generator geöffnet werden."));
